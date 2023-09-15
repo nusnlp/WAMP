@@ -1,0 +1,8 @@
+; @author Chan Hong Guan chanhg -at- comp.nus.edu.sg
+; $Id: wamp_essay.info 38 2009-06-10 05:15:43Z chanhg $
+name = WAMP Essay
+description = Essay submodule for WAMP. An essay is a piece of writing that a students submits for annotation and grading by a annotator.
+core = 6.x
+package = WAMP
+version = 6.x-0.1.x
+

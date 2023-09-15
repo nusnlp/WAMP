@@ -1,0 +1,8 @@
+; @author Chan Hong Guan chanhg -at- comp.nus.edu.sg
+; $Id: wamp_research.info 36 2009-06-09 09:20:18Z chanhg $
+name = WAMP Administration
+description = Administration submodule for WAMP.
+core = 6.x
+package = WAMP
+version = 6.x-0.1.x
+

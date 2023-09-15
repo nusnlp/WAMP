@@ -1,0 +1,99 @@
+<?php
+// @author Chan Hong Guan chanhg -at- comp.nus.edu.sg
+// $Id: wamp_research.install 121 2009-07-13 09:20:10Z chanhg $
+
+function wamp_research_install() {
+    drupal_install_schema('wamp_research');
+}
+
+function wamp_research_schema() {
+
+    $schema = array();
+
+	$schema['wamp_essay_imported'] = array(
+        'description' => t('imported essays'),
+        'fields' => array(
+            'import_id' => array(
+                'type' => 'serial',
+                'size' => 'normal',
+                'not null' => TRUE,
+                'description' => t('internal identifier.'),
+            ),
+            'xml' => array(
+                'type' => 'text',
+                'size' => 'big',
+                'not null' => TRUE,
+                'description' => t('actual essay.'),
+            ),
+			'uploaded_date' => array(
+                'type' => 'datetime',
+                'size' => 'normal',
+                'not null' => TRUE,
+                'description' => t('Date and time of upload'),
+			),
+			'uid' => array(
+                'type' => 'int',
+                'size' => 'normal',
+                'not null' => TRUE,
+                'description' => t('user id of uploader'),
+			),
+			'original_filename' => array(
+                'type' => 'varchar',
+                'length' => 255,
+                'not null' => TRUE,
+                'description' => t('original filename'),
+			),
+
+        ),
+        'primary key' => array('import_id',),
+    );
+
+    $schema['wamp_essay_exported'] = array(
+        'description' => t('exported essays'),
+        'fields' => array(
+            'export_id' => array(
+                'type' => 'serial',
+                'size' => 'normal',
+                'not null' => TRUE,
+                'description' => t('internal identifier.'),
+            ),
+            //The section below is commented out to remove module information.
+            //
+            // 'module_id' => array(
+            //     'type' => 'int',
+            //     'size' => 'normal',
+            //     'not null' => TRUE,
+            //     'description' => t('module identifier.'),
+            // ),
+            'filename' => array(
+                'type' => 'varchar',
+                'length' => '255',
+                'not null' => TRUE,
+                'description' => t('filename of exported xml'),
+            ),
+			'exported_date' => array(
+                'type' => 'datetime',
+                'size' => 'normal',
+                'not null' => TRUE,
+                'description' => t('Date and time of export'),
+			),
+			'uid' => array(
+                'type' => 'int',
+                'size' => 'normal',
+                'not null' => TRUE,
+                'description' => t('user id of uploader'),
+			),
+
+        ),
+        'primary key' => array('export_id',),
+    );
+
+
+    return $schema;
+}
+
+function wamp_research_uninstall() {
+    //drupal_uninstall_schema('wamp_research');
+}
+
+?>

@@ -1,0 +1,13 @@
+; $Id: conditional_styles.info 82 2009-07-01 09:01:52Z chanhg $
+
+name = "Conditional Stylesheets"
+description = "Allows themes to add conditional stylesheets."
+
+core = 6.x
+
+; Information added by drupal.org packaging script on 2009-05-25
+version = "6.x-1.1"
+core = "6.x"
+project = "conditional_styles"
+datestamp = "1243264907"
+

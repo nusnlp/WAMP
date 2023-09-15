@@ -1,0 +1,384 @@
+<?php
+// @author Chan Hong Guan chanhg -at- comp.nus.edu.sg
+// $Id: wamp.module 175 2009-08-19 08:53:19Z chanhg $
+
+ /**
+ * @defgroup wamp WAMP
+ * @{
+ * WAMP stands for Writing Annotation Marking Platform.
+ */
+
+/**
+ * Valid permissions for wamp module.
+ * Implementation of hook_perm
+ * @return array An array of valid permissions for the wamp module
+ */
+function wamp_perm()
+{
+	return array(
+		'access wamp',
+		'administer wamp');
+} // function wamp_perm
+
+
+/**
+ *
+ * Implementation of hook_menu
+ */
+function wamp_menu()
+{
+	$items = array();
+
+	$items['admin/wamp'] = array(
+		'title' => 'WAMP',
+		'description' => 'Manage WAMP',
+		'page callback' => 'wamp_menu_block_page',
+		'access arguments' => array('administer wamp'),
+	);
+
+	//The section below is commented out to remove the module overview form for annotator.
+	//
+	// $items['wamp'] = array(
+	// 	'title' => 'Modules',
+	// 	'description' => 'Modules',
+	// 	'page callback' => 'wamp_overview_form',
+	// 	'access arguments' => array('access wamp'),
+	// 	'file' => 'wamp.user.inc',
+	// );
+
+	$items['admin/settings/wamp'] = array(
+		'title' => 'WAMP',
+		'description' => 'Manage how WAMP behaves',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('wamp_settings_form'),
+		'access arguments' => array('administer wamp'),
+		'file' => 'wamp.admin.inc',
+	);
+
+    $items['wamp/view_essays'] = array(
+        'title' => 'View Essays',
+        'description' => 'Show all essays',
+        'page callback' => 'wamp_view_essays_form',
+        'access arguments' => array('access wamp'),
+        'file' => 'wamp.user.inc',
+    );
+
+	return $items;
+}
+
+function wamp_menu_block_page()
+{
+	$item = menu_get_item();
+	if ($content = system_admin_menu_block($item))
+	{
+		$output = theme('admin_block_content', $content);
+	}
+	else
+	{
+		$output = t('You do not have any administrative items.');
+	}
+
+	return $output;
+}
+
+/**
+ * Implementation of hook_theme().
+ *
+ * Returns information about every themable function defined by the module.
+ */
+function wamp_theme()
+{
+	$items = array();
+
+	//The section below is commented out to remove the module listing form.
+	//
+	// $items['wamp_overview_form_module_form'] = array(
+	// 	'arguments' => array('form' => array()),
+	// 	'file' => 'wamp.user.inc',
+	// );
+
+	$items['wamp_view_essays_form_module_form'] = array(
+		'arguments' => array('form' => array()),
+		'file' => 'wamp.user.inc',
+	);
+
+	//The section below is commented out to remove the assignment prompt form for the selected module.
+	//
+	// $items['wamp_overview_form_essay_reqs_form'] = array(
+	// 	'arguments' => array('form' => array()),
+	// 	'file' => 'wamp.user.inc',
+	// );
+
+	//The section below is commented out to remove the essay listing page form for selected assignment prompt.
+	//
+	// $items['wamp_overview_form_all_essays_form'] = array(
+	// 	'arguments' => array('form' => array(), $type),
+	// 	'file' => 'wamp.user.inc',
+	// );
+	return $items;
+}
+/**
+ * Implementation of hook_user.
+ * Overrides the login process so that non-admins,
+ * i.e., annotators, get redirected to the wamp/view_essays page.
+ *
+ */
+function wamp_user($op, &$edit, &$account, $category = NULL) {
+
+	switch ($op) {
+		case 'login':
+
+			if ($account->uid != 1) {
+				// $_REQUEST['destination'] = 'wamp';
+				$_REQUEST['destination'] = 'wamp/view_essays';
+			}
+			break;
+	}
+
+}
+
+/**
+ * Retrieves the display name of a user from his/her profile
+ * @param $uid
+ *   Drupal unique user identifer
+ * @return
+ *   The display name of the user
+ */
+function get_display_name($uid) {
+	$uid = (int) $uid;
+	$uid = check_plain($uid);
+	if (!empty($uid) && is_numeric($uid)) {
+		$sql_name = "SELECT v.value  FROM {users} u, {profile_fields} f, {profile_values} v
+				WHERE u.uid = v.uid AND u.uid = %d
+				AND f.fid = v.fid
+				AND f.name = 'profile_pers_name'";
+		$name = db_result(db_query($sql_name, array($uid)));
+		return $name;
+	}
+}
+
+//The section below is commented out to remove student information.
+//
+// /**
+//  * Retrieves the matriculation number of a student from his/her profile
+//  * @param $uid
+//  *   Drupal unique user identifer
+//  * @return
+//  *   Matriculation number of the student
+//  */
+// function get_student_matric_num($uid) {
+
+// 	$uid = (int) $uid;
+// 	if (!empty($uid) && is_numeric($uid)) {
+
+// 		$sql_name = "SELECT v.value  FROM {users} u, {profile_fields} f, {profile_values} v
+// 				WHERE u.uid = v.uid AND u.uid = %d
+// 				AND f.fid = v.fid
+// 				AND f.name = 'profile_pers_matricnum'";
+// 		$matric = db_result(db_query($sql_name, array($uid)));
+// 		return $matric;
+// 	}
+// 	else return false;
+// }
+
+/**
+ * Retrieves the name of a annotator from his/her profile
+ * @param $uid
+ *   Drupal unique user identifer
+ * @return
+ *   Name of the annotator
+ */
+function get_annotator_name($uid) {
+
+	$uid = (int) $uid;
+	if (!empty($uid) && is_numeric($uid)) {
+
+		$sql_name = "SELECT v.value  FROM {users} u, {profile_fields} f, {profile_values} v
+				WHERE u.uid = v.uid AND u.uid = %d
+				AND f.fid = v.fid
+				AND f.name = 'profile_pers_name'";
+		$name = db_result(db_query($sql_name, array($uid)));
+		return $name;
+	}
+	else return false;
+}
+
+/**
+ * Retrieves user type based on assigned roles
+ * @return
+ *   User type
+ */
+function get_user_type() {
+
+	global $user;
+	$type = '';
+	foreach($user->roles as $key)
+	{
+		if ($key == 'annotator') {
+			$type = 'annotator';
+			break;
+		}
+	}
+
+	if ($type == 'annotator') return $type;
+	else if ($user->uid == 1) return 'admin';
+	else return 'unknown';
+}
+
+//The section below is commented out to remove module information & the function is not used.
+//
+// /**
+//  * Retrieves number of annotators available for a given module and its group.
+//  *
+//  * A tutor can only belong to a single group with a module.
+//  *
+//  * @param $module_id
+//  *   WAMP unique module identifier
+//  * @param $modulegroup_id
+//  *   WAMP unique module group identifier
+//  * @return
+//  *   Number of annotators available
+//  */
+// function get_annotators_count($module_id, $modulegroup_id) {
+// 	$module_id = (int) $module_id;
+// 	$modulegroup_id = (int) $modulegroup_id;
+// 	return $annotators_count = db_result(db_query("SELECT COUNT(u.uid) FROM {users} u, {role} r, {users_roles} ur
+//      WHERE u.uid = ur.uid AND ur.rid = r.rid AND r.name = 'annotator' AND
+//     (u.uid NOT IN
+//             (SELECT mgt.tutor_id
+//             FROM {wamp_module_group} mg, {wamp_module_group_tutor} mgt
+//             WHERE mg.module_id = %d AND mg.modulegroup_id = mgt.modulegroup_id
+//                 AND mgt.modulegroup_id = %d)
+//         )", array($module_id, $modulegroup_id)));
+// }
+
+//The section below is commented out to remove module information & the function is not used.
+//
+// /**
+//  * Retrieves an array of of annotators available for a given module and its group
+//  *
+//  *  @param $module_id
+//  *   WAMP unique module identifier
+//  * @param $modulegroup_id
+//  *   WAMP unique module group identifier
+//  * @return
+//  *   Array of available annotators
+//  */
+// function get_annotators_list($module_id, $modulegroup_id) {
+// 	$module_id = (int) $module_id;
+// 	$modulegroup_id = (int) $modulegroup_id;
+// 	$sql_annotators = "SELECT u.uid, u.name FROM {users} u, {role} r, {users_roles} ur
+//          WHERE u.uid = ur.uid AND ur.rid = r.rid AND r.name = 'annotator' AND
+//         (u.uid NOT IN
+//             (SELECT mgt.tutor_id
+//             FROM {wamp_module_group} mg, {wamp_module_group_tutor} mgt
+//             WHERE mg.module_id = %d AND mg.modulegroup_id = mgt.modulegroup_id
+//                 AND mgt.modulegroup_id = %d)
+//         )";
+// 	$result_annotators = db_query($sql_annotators, array($module_id, $modulegroup_id));
+
+// 	$annotators = array();
+// 	$annotators["-1"] = "--- Please select a annotator ---";
+// 	while ($annotator = db_fetch_object($result_annotators)) {
+// 		$annotatorname = get_display_name($annotator->uid);
+// 		$annotators["$annotator->uid"]  = t($annotatorname);
+// 	}
+
+// 	return $annotators;
+// }
+
+//The section below is commented out to remove the check for spectator.
+//
+// /**
+//  * Checks if a logged-in user is a spectator in the specified module
+//  *
+//  * @param $module_id
+//  *   WAMP unique module identifier
+//  * @return
+//  *   TRUE if user is a spectator in the specified module
+//  */
+// function is_spectator($module_id) {
+
+// 	global $user;
+// 	$module_id = (int) $module_id;
+
+// 	$type = get_user_type();
+// 	if ($type == 'annotator') {
+
+// 		$spectator_id = db_result(
+// 			db_query('SELECT spectator_id FROM {wamp_module_spectator} WHERE module_id=%d
+// 						AND spectator_id = %d',
+// 				array($module_id, $user->uid)));
+// 		if (!empty($spectator_id) && $spectator_id == $user->uid) return true;
+// 		else return false;
+// 	}
+// 	else return false;
+// }
+
+/** Prettifies an XML string into a human-readable and indented work of art
+ *
+ * Source: http://gdatatips.blogspot.com/2008/11/xml-php-pretty-printer.html
+ *  @param $xml
+ *    XML document
+ *  @param $html_output
+ *    True if the output should be escaped (for use in HTML)
+ * @return
+ *    Prettified XML
+ */
+function xmlpp($xml, $html_output=false) {
+	$xml_obj = new SimpleXMLElement($xml);
+	$level = 8;
+	$indent = 0; // current indentation level
+	$pretty = array();
+
+	// get an array containing each XML element
+	$xml = explode("\n", preg_replace('/>\s*</', ">\n<", $xml_obj->asXML()));
+
+	// shift off opening XML tag if present
+	if (count($xml) && preg_match('/^<\?\s*xml/', $xml[0])) {
+		$pretty[] = array_shift($xml);
+	}
+
+	foreach ($xml as $el) {
+		if (preg_match('/^<([\w])+[^>\/]*>$/U', $el)) {
+		// opening tag, increase indent
+			$pretty[] = str_repeat(' ', $indent) . $el;
+			$indent += $level;
+		} else {
+			if (preg_match('/^<\/.+>$/', $el)) {
+				$indent -= $level;  // closing tag, decrease indent
+			}
+			if ($indent < 0) {
+				$indent += $level;
+			}
+			$pretty[] = str_repeat(' ', $indent) . $el;
+		}
+	}
+	$xml = implode("\n", $pretty);
+	return ($html_output) ? htmlentities($xml) : $xml;
+}
+
+/**
+ * HTML printing for print_r function
+ *
+ * Source: http://sg.php.net/manual/en/function.print-r.php#86187
+ *
+ * @param $var
+ *    Array variable
+ * @return
+ *    HTML-fied array variable
+ */
+function print_array($var)
+{
+	$input =var_export($var,true);
+	$input = preg_replace("! => \n\W+ array \(!Uims", " => Array ( ", $input);
+	$input = preg_replace("!array \(\W+\),!Uims", "Array ( ),", $input);
+	return("<pre>".str_replace('><?', '>', highlight_string('<'.'?'.$input, true))."</pre>");
+}
+
+
+/**
+ * @} End of "defgroup wamp".
+ */
+
+ ?>

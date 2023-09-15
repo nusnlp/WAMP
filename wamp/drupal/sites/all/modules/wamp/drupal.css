@@ -1,0 +1,104 @@
+/* 
+    Document   : drupal
+    Created on : Jun 30, 2009, 11:57:09 PM
+    Author     : hgchan
+    Description:
+        Purpose of the stylesheet follows.
+*/
+
+/* 
+   TODO customize this sample style
+   Syntax recommendation http://www.w3.org/TR/REC-CSS2/
+*/
+
+.wamp_top_navi {
+	
+}
+
+.wamp_top_navi div.fpnl {
+	float: left;
+	position: relative;
+	margin-left: 40%;
+	text-align: center;
+	height:40px;
+	width: 20%;
+}
+
+.wamp_top_navi div.corrected_essay {
+	float: right;
+	/*margin: 10px;*/
+	width: 30%;
+	text-align: right;
+}
+
+.wamp_top_navi div.dropdown {
+	height:40px;
+	position: relative;
+	float: left;
+	margin-left: -60%;
+	width: 40%;
+}
+
+.wamp_top_navi div.dropdown_other {
+	position: relative;
+	float: right;
+	width: 40%;
+	text-align: right;
+	margin-top: -20px;
+}
+
+.wamp_top_navi div.dropdown_other form#no_bottom_margin {
+	margin-bottom:0em;
+}
+
+thead th.center {
+	text-align:center;
+}
+
+div.center {
+	text-align:center;
+}
+
+div.bad_essay, div.needs_editing {
+	text-align: center;
+	border: solid;
+	padding: 10px;
+	margin: 10px;
+}
+
+div.bad_essay span.warning, div.needs_editing span.warning {
+	color:red;
+	font-size:200%;
+}
+
+div.bad_essay span.fine_print, div.needs_editing span.fine_print {
+	color:red;
+	font-size:75%;
+}
+
+div.essay_prompt {
+	color:#000000;
+	border: #CCCCCC solid;
+	padding: 10px;
+	margin: 10px;
+}
+
+div.sameline {
+	position: relative;
+	margin-left: 100px;
+	margin-top: -34px;
+}
+
+div.essay_options {
+	float: left;
+	clear: both;
+}
+
+div.clear {
+	clear: both;
+}
+
+ul.links {
+	text-align:center;
+}
+

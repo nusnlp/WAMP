@@ -1,0 +1,273 @@
+<?php
+// $Id: api.install,v 1.11.2.1 2009/01/28 20:52:26 drumm Exp $
+
+function api_schema() {
+  $schema['api_branch'] = array(
+    'fields' => array(
+      'branch_name' => array('type' => 'varchar', 'length' => '31', 'not null' => TRUE, 'default' => ''),
+      'title' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'directory' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'weight' => array('type' => 'int', 'unsigned' => TRUE, 'size' => 'tiny', 'not null' => TRUE, 'default' => 0),
+    ),
+    'primary key' => array('branch_name'),
+    'indexes' => array(
+      'weight' => array('weight'),
+    ),
+  );
+  $schema['api_documentation'] = array(
+    'fields' => array(
+      'did' => array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE),
+      'object_name' => array('type' => 'varchar', 'length' => '127', 'not null' => TRUE, 'default' => ''),
+      'branch_name' => array('type' => 'varchar', 'length' => '31', 'not null' => TRUE, 'default' => ''),
+      'object_type' => array('type' => 'varchar', 'length' => '31', 'not null' => TRUE, 'default' => ''),
+      'title' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'file_name' => array('type' => 'varchar', 'length' => '127', 'not null' => TRUE, 'default' => ''),
+      'summary' => array('type' => 'text', 'size' => 'medium', 'not null' => TRUE),
+      'documentation' => array('type' => 'text', 'size' => 'medium', 'not null' => TRUE),
+      'code' => array('type' => 'text', 'size' => 'medium', 'not null' => TRUE),
+    ),
+    'primary key' => array('did'),
+    'unique keys' => array(
+      'object_name' => array('object_name', 'branch_name', 'object_type'),
+    ),
+    'indexes' => array(
+      'branch_name' => array('branch_name'),
+      'title' => array('title'),
+    ),
+  );
+  $schema['api_file'] = array(
+    'fields' => array(
+      'did' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'modified' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'version' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'found' => array('type' => 'int', 'unsigned' => TRUE, 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '1'),
+    ),
+    'primary key' => array('did'),
+  );
+  $schema['api_function'] = array(
+    'fields' => array(
+      'did' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'signature' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'start_line' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'parameters' => array('type' => 'text', 'size' => 'medium', 'not null' => TRUE),
+      'return_value' => array('type' => 'text', 'size' => 'medium', 'not null' => TRUE),
+    ),
+    'primary key' => array('did'),
+  );
+  $schema['api_reference_storage'] = array(
+    'fields' => array(
+      'object_name' => array('type' => 'varchar', 'length' => '127', 'not null' => TRUE, 'default' => ''),
+      'branch_name' => array('type' => 'varchar', 'length' => '31', 'not null' => TRUE, 'default' => ''),
+      'object_type' => array('type' => 'varchar', 'length' => '31', 'not null' => TRUE, 'default' => ''),
+      'from_did' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'to_did' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+    ),
+    'indexes' => array(
+      'object_ref' => array('object_name', 'branch_name', 'object_type'),
+      'to_did' => array('to_did'),
+    ),
+  );
+
+  return $schema;
+}
+
+function api_install() {
+  drupal_install_schema('api');
+}
+
+function api_update_1() {
+  return _system_update_utf8(array('api_branch', 'api_documentation', 'api_file', 'api_function', 'api_reference'));
+}
+
+function api_update_2() {
+  $ret = array();
+  db_add_column($ret, 'api_file', 'found', 'tinyint', array('not null' => TRUE, 'default' => 0, 'length' => 1, 'unsigned' => TRUE));
+
+  return $ret;
+}
+
+function api_update_3() {
+  $ret[] = update_sql("CREATE TABLE {api_reference_storage} (
+    reference_key text NOT NULL,
+    from_did int(10) NOT NULL default '0'
+  ) TYPE=MyISAM /*!40100 DEFAULT CHARACTER SET utf8 */;");
+
+  $reference = variable_get('api_reference', array());
+  foreach (array_keys($reference) as $key) {
+    foreach ($reference[$key] as $from_did) {
+      db_query("INSERT INTO {api_reference_storage} (reference_key, from_did) VALUES ('%s', %d)", $key, $from_did);
+    }
+  }
+  variable_del('api_reference');
+}
+
+function api_update_4() {
+  $return = array();
+  db_add_index($return, 'api_documentation', '', 'branch_name');
+  return $return;
+}
+
+function api_update_5() {
+  $return = array();
+  db_add_index($return, 'api_documentation', '', 'title');
+
+  return $return;
+}
+
+/**
+ * Further optimize the reference storage by letting the database handle the aggregrate
+ * operations.
+ */
+function api_update_6() {
+  $return = array();
+  $schema['api_reference_storage'] = array(
+    'fields' => array(
+      'object_name' => array(
+        'type' => 'varchar',
+        'length' => '127',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'branch_name' => array(
+        'type' => 'varchar',
+        'length' => 31,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'object_type' => array(
+        'type' => 'varchar',
+        'length' => 31,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'from_did' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => '0'
+      ),
+      'to_did' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => '0'),
+      ),
+      'indexes' => array(
+        'api_documentation_object_ref' => array('object_name', 'branch_name', 'object_type'),
+      ),
+    );
+
+  db_rename_table($return, 'api_reference_storage', 'api_reference_storage_old');
+  db_create_table($return, 'api_reference_storage', $schema['api_reference_storage']);
+
+  $result = db_query('SELECT * FROM {api_reference_storage}');
+  while ($row = db_fetch_object($result)) {
+    list($branch_name, $to_type, $to_name) = unserialize($row->reference_key);
+    db_query("INSERT INTO {api_reference_storage} (object_name, branch_name, object_type, from_did) VALUES ('%s', '%s', '%s', %d)", $to_name, $branch_name, $to_type, $row->from_did);
+  }
+
+  db_drop_table($return, 'api_reference_storage_old');
+
+  return $return;
+}
+
+/**
+ * Move data from {api_reference} to {api_reference_storage}.
+ */
+function api_update_7() {
+  $return = array();
+
+  $return[] = update_sql("INSERT INTO {api_reference_storage} (object_name, branch_name, object_type, from_did, to_did) SELECT d.object_name, d.branch_name, d.object_type, r.from_did, r.to_did FROM {api_reference} r INNER JOIN {api_documentation} d ON d.did = r.to_did");
+  db_drop_table($return, 'api_reference');
+
+  return $return;
+}
+
+function api_update_8() {
+  $return = array();
+
+  db_drop_primary_key($return, 'api_documentation');
+  db_change_field($return, 'api_documentation', 'did', 'did',
+    array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE),
+    array('primary key' => array('did'))
+  );
+
+  return $return;
+}
+
+/**
+ * Change the branch directories delimiter from : to \n.
+ */
+function api_update_9() {
+  $return = array();
+
+  $result = db_query("SELECT branch_name, directory FROM {api_branch} WHERE directory LIKE '%:%'");
+  while ($branch = db_fetch_object($result)) {
+    db_query("UPDATE {api_branch} SET directory = '%s' WHERE branch_name = '%s'", strtr($branch->directory, ':', "\n"), $branch->branch_name);
+  }
+
+  return $return;
+}
+
+/**
+ * Make sure block cache rules are set properly.
+ */
+function api_update_10() {
+  $return = array();
+
+  $return[] = update_sql("UPDATE {blocks} SET cache = ". (BLOCK_CACHE_PER_PAGE | BLOCK_CACHE_PER_ROLE) ." WHERE module = 'api'");
+
+  return $return;
+}
+
+/**
+ * return is a reserved word.
+ */
+function api_update_11() {
+  $return = array();
+
+  db_change_field($return, 'api_function', '`return`', 'return_value',
+    array('type' => 'text', 'size' => 'medium', 'not null' => TRUE)
+  );
+
+  return $return;
+}
+
+/**
+ * Add a weight column to branches to simplify various algorithms.
+ */
+function api_update_12() {
+  $return = array();
+
+  db_add_field($return, 'api_branch', 'weight', array(
+    'type' => 'int',
+    'unsigned' => TRUE,
+    'size' => 'tiny',
+    'not null' => TRUE,
+    'default' => 0,
+  ), array(
+    'indexes' => array(
+      'weight' => array('weight'),
+    ),
+  ));
+
+  return $return;
+}
+
+/**
+ * Optimize the 'N functions call f()' query.
+ */
+function api_update_13() {
+  $return = array();
+
+  db_add_index($return, 'api_reference_storage', 'to_did', array('to_did'));
+
+  return $return;
+}
+
+function api_uninstall() {
+  drupal_uninstall_schema('api');
+  variable_del('api_default_branch');
+  variable_del('api_php_funcsummary');
+  variable_del('api_php_funcpath');
+  variable_del('api_files_per_cron');
+  variable_del('api_reference');
+}

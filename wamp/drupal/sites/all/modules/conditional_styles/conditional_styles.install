@@ -1,0 +1,20 @@
+<?php
+// $Id: conditional_styles.install 82 2009-07-01 09:01:52Z chanhg $
+
+/**
+ * @file
+ * Provides install, upgrade and un-install functions for conditional_styles.
+ */
+
+/**
+ * Implements hook_uninstall().
+ */
+function conditional_styles_uninstall() {
+  // Delete conditional stylesheets variables.
+  $themes = list_themes();
+  foreach (array_keys($themes) AS $theme) {
+    variable_del('conditional_styles_' . $theme);
+  }
+  // Clear the page cache.
+  cache_clear_all();
+}

@@ -1,0 +1,133 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<title>Annotator User Interface Elements (Editable View)</title>
+</head>
+<body>
+	<div id="wamp_status">
+		<span>Loading annotations, please wait...</span>
+	</div>
+	<div id="wamp_menu">
+		<a href="#annotate">Annotate Mistake</a>
+		<a href="#cancel">Cancel</a>
+	</div>
+	<div id="wamp_list">
+	</div>
+	<div id="wamp_form">
+		<form action="" method="post">
+			<fieldset class="fields">
+				<div>
+					<label for="wamp_form_type">Mistake Type:</label>
+					<select id="wamp_form_type" name="type">
+						<optgroup class="VERB" label="Verb">
+							<option value="VERB" selected="selected">VERB (Verb)</option>
+							<option value="VERB:FORM">VERB:FORM (Verb Form)</option>
+							<option value="VERB:INFL">VERB:INFL (Verb Inflection)</option>
+							<option value="VERB:SVA">VERB:SVA (Subject-Verb Agreement)</option>
+							<option value="VERB:TENSE">VERB:TENSE (Verb Tense)</option>
+						</optgroup>
+						<optgroup class="PREP" label="Preposition">
+							<option value="PREP">PREP (Preposition)</option>
+						</optgroup>
+						<optgroup class="DET" label="Determiner">
+							<option value="DET">DET (Determiner)</option>
+						</optgroup>
+						<optgroup class="PUNCT" label="Punctuation">
+							<option value="PUNCT">PUNCT (Punctuation)</option>
+						</optgroup>
+						<optgroup class="SPELL" label="Spelling">
+							<option value="SPELL">SPELL (Spelling)</option>
+						</optgroup>
+						<optgroup class="NOUN" label="Noun">
+							<option value="NOUN">NOUN (Noun)</option>
+							<option value="NOUN:INFL">NOUN:INFL (Noun Inflection)</option>
+							<option value="NOUN:NUM">NOUN:NUM (Noun Number)</option>
+							<option value="NOUN:POSS">NOUN:POSS (Noun:Possessive)</option>
+						</optgroup>
+						<optgroup class="PRON" label="Pronoun">
+							<option value="PRON">PRON (Pronoun)</option>
+						</optgroup>
+						<optgroup class="ORTH" label="Orthography">
+							<option value="ORTH">ORTH (Orthography)</option>
+						</optgroup>
+						<optgroup class="ADJ" label="Adjective">
+							<option value="ADJ">ADJ (Adjective)</option>
+							<option value="ADJ:FORM">ADJ:FORM (Adjective Form)</option>
+						</optgroup>
+						<optgroup class="ADV" label="Adverb">
+							<option value="ADV">ADV (Adverb)</option>
+						</optgroup>
+						<optgroup class="MORPH" label="Morphology">
+							<option value="MORPH">MORPH (Morphology)</option>
+						</optgroup>
+						<optgroup class="WO" label="Word Order">
+							<option value="WO">WO (Word Order)</option>
+						</optgroup>
+						<optgroup class="CONJ" label="Conjunction">
+							<option value="CONJ">CONJ (Conjunction)</option>
+						</optgroup>
+						<optgroup class="CONTR" label="Contraction">
+							<option value="CONTR">CONTR (Contraction)</option>
+						</optgroup>
+						<optgroup class="PART" label="Particle">
+							<option value="PART">PART (Particle)</option>
+						</optgroup>
+						<optgroup class="OTHER" label="Other">
+							<option value="OTHER">OTHER (Other)</option>
+						</optgroup>
+						<optgroup class="UNK" label="Unknown">
+							<option value="UNK">UNK (Unknown)</option>
+						</optgroup>
+					</select>
+				</div>
+				<div>
+					<label for="wamp_form_correction">Suggested Correction:</label>
+					<textarea id="wamp_form_correction" name="correction" rows="5" cols="30"></textarea>
+				</div>
+				<div>
+					<label for="wamp_form_comments">Other Comments:</label>
+					<textarea id="wamp_form_comments" name="comments" rows="5" cols="30"></textarea>
+				</div>
+			</fieldset>
+			<fieldset class="buttons">
+				<div>
+					<button type="submit" name="save">Save</button>
+					<button type="button" name="cancel">Cancel</button>
+				</div>
+			</fieldset>
+			<div class="message"></div>
+		</form>
+	</div>
+	<div id="wamp_view">
+		<dl class="details">
+			<dt>Mistake Type:</dt>
+			<dd id="wamp_view_type">{mistakeType}</dd>
+			<dt>Suggested Correction:</dt>
+			<dd id="wamp_view_correction">{mistakeCorrection}</dd>
+			<dt>Other Comments:</dt>
+			<dd id="wamp_view_comments">{mistakeComments}</dd>
+		</dl>
+		<div class="buttons">
+			<button type="button" name="edit">Edit</button>
+			<button type="button" name="delete">Delete</button>
+			<button type="button" name="cancel">Close</button>
+		</div>
+		<div class="message"></div>
+	</div>
+	<div id="wamp_table">
+		<h2>Annotated Mistakes</h2>
+		<table>
+			<thead>
+				<tr>
+					<th>No.</th>
+					<th>Type</th>
+					<th>Correction</th>
+					<th>Other Comments</th>
+			</thead>
+			<tbody>
+			</tbody>
+		</table>
+	</div>
+</body>
+</html>

@@ -1,0 +1,291 @@
+body {
+	font-family: Helvetica, Arial, sans-serif;
+	font-size: 16px;
+	color: #333333;
+}
+
+#wamp_body {
+	font-family: 'Trebuchet MS', Verdana, Arial;
+	color: #000000;
+	font-size: 16px;
+	line-height: 2.25;
+	border: solid 1px #cccccc;
+	background: #fcfcfc;
+	padding: 10px;
+	margin: 10px;
+}
+#wamp_body .lc {
+	display: inline-block;
+	position: relative;
+	bottom: 1.0em;
+	width: 0;
+	line-height: normal;
+	white-space: nowrap;
+}
+#wamp_body .lc * {
+	font-size: 11px;
+	font-weight: normal;
+	font-style: normal;
+	text-decoration: none;	
+}
+#wamp_body .lc > * {
+	display: inline-block;
+	vertical-align: bottom;
+	padding: 0 0 2px 0;
+	margin: 0 2px 0 0;
+}
+#wamp_body .lc > * *:first-child {
+	display: none;
+}
+#wamp_body .lc .active {
+	position: relative;
+	z-index: 1;
+	padding: 0 4px 2px 4px;
+	background: #33ff00;
+}
+#wamp_body .lc .hover {
+	cursor: pointer;
+	border-top: 1px solid #ff0000;
+}
+
+#wamp_body .h {
+	background: #ffff00;
+}
+#wamp_body .h .h {
+	background: #e9e900;
+}
+#wamp_body .h .h .h {
+	background: #d3d300;
+}
+#wamp_body .h .h .h .h {
+	background: #bdbd00;
+}
+#wamp_body .h.active, #wamp_body .h.active .h {
+	background: #33ff00 !important;
+	color: #000000 !important;
+}
+#wamp_body .h.hover {
+	border-bottom: 1px solid #ff0000;
+	cursor: help;
+}
+#wamp_body .h.hover .h.hover {
+	border: none;
+}
+
+#wamp_body .correction {
+	border: 1px solid orange;
+	padding: 0 1px;
+	font-weight: bold;
+}
+
+.popup-overlay {
+	background: #ffffff;
+}
+.popup-content {
+	color: #333333;
+	background: #eeeeee;
+	border: 1px solid #aaaaaa;
+}
+
+#wamp_status {
+	border: none;
+	background: #ffff00;
+	margin: 10px;
+	padding: 5px;
+}
+
+#wamp_menu {
+	font-size: 14px;
+	margin: 5px;
+	min-width: 120px;
+}
+#wamp_menu ul, #wamp_menu li {
+	padding: 0;
+	margin: 0;
+	list-style: none;
+	width: 100%;
+}
+#wamp_menu a {
+	color: #333333;
+	text-decoration: none;
+	display: block;
+	padding: 4px 6px;
+	cursor: pointer;
+}
+#wamp_menu a:hover {
+	background: #6699ff;
+	color: #ffffff;
+}
+
+#wamp_list {
+	font-size: 14px;
+	margin: 10px 5px 5px 5px;
+	min-width: 160px;
+}
+#wamp_list div {
+	text-decoration: none;
+	border: none;
+	padding: 4px 6px;
+	cursor: pointer;
+}
+#wamp_list div.hover {
+	background: #6699ff;
+	color: #ffffff;
+}
+
+#wamp_form button, #wamp_view button {
+	margin: 0 0 0 5px;
+	width: 5em;
+}
+#wamp_form .message, #wamp_view .message {
+	color: #ff0000;
+	font-weight: bold;
+	font-size: 14px;
+	margin: 10px;
+	text-align: right;
+}
+
+#wamp_form {
+	width: 24em;
+	cursor: move;
+}
+#wamp_form * {
+	font-family: Helvetica, Arial, sans-serif;
+	margin: 0;
+	padding: 0;
+	line-height: normal;
+}
+#wamp_form fieldset {
+	margin: 4px 10px 10px 10px;
+	border: none;
+}
+#wamp_form label {
+	font-weight: bold;
+	margin: 8px 0 2px 0;
+	display: block;
+}
+#wamp_form select, #wamp_form textarea {
+	border: solid 1px #999999;
+}
+#wamp_form select {
+	font-size: 0.9em;
+	width: 100%;
+}
+#wamp_form option {
+	background: #ffffff;
+	padding: 0 0 0 10px;
+	font-weight: normal;
+}
+#wamp_form optgroup {
+	background: #dddddd;
+	color: #000000;
+}
+#wamp_form textarea {
+	font-size: 1em;
+	padding: 1px 2px;
+	width: 98%;
+	height: 4em;
+	overflow: auto;
+}
+#wamp_form .buttons {
+	text-align: right;
+}
+
+#wamp_view {
+	width: 24em;
+	cursor: move;
+}
+#wamp_view * {
+	margin: 0;
+	padding: 0;
+	line-height: normal;
+}
+#wamp_view .details dt {
+	margin: 10px 10px 0 10px;
+	font-weight: bold;
+}
+#wamp_view .details dd {
+	margin: 2px 10px 0 10px;
+	max-height: 4em;
+	overflow: auto;
+	padding: 5px;
+	cursor: text;
+	border: 1px solid #cccccc;
+	background: #f6f6f6;
+}
+#wamp_view .details * {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+#wamp_view .buttons {
+	text-align: right;
+	margin: 10px;
+}
+
+#wamp_table {
+	display: none;
+	page-break-before: always;
+}
+#wamp_table table {
+	border-spacing: 2px;
+	empty-cells: show;
+}
+#wamp_table th {
+	background: #3366cc;
+	color: #ffffff;
+	text-align: left;
+	font-weight: bold;
+	padding: 4px 8px;
+}
+#wamp_table td {
+	padding: 4px;
+	border: 1px solid #999999;
+}
+#wamp_table td:first-child {
+	text-align: right;
+}
+#edit-go {
+	display: none;
+}
+#corrected_essay_margin {
+	clear: both;
+}
+#corrected_essay_div {
+	float: right;
+}
+
+@media print {
+	#wamp_body {
+		border: none;
+		background: none;
+		color: #000000;
+	}
+	#wamp_body .lc {
+		display: inline;
+		position: static;
+		width: auto;
+	}
+	#wamp_body .lc * {
+		display: inline;
+	}
+	#wamp_body .lc > * {
+		vertical-align: super;
+		padding: 0 2px;
+		background: white;
+	}
+	#wamp_body .lc > * *:first-child {
+		display: inline;
+	}
+	#wamp_body .h.hover, #wamp_body .lc .hover {
+		border: none;
+	}
+	
+	#wamp_status, #wamp_menu, #wamp_list, #wamp_form, #wamp_view, .popup-overlay, .popup-content {
+		display: none;
+	}
+	
+	#wamp_table {
+		display: block;
+	}
+}

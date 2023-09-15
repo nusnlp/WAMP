@@ -1,0 +1,158 @@
+<?php
+// @author Chan Hong Guan chanhg -at- comp.nus.edu.sg
+// $Id: wamp_research.module 161 2009-08-17 10:16:12Z chanhg $
+
+/**
+ * @defgroup wamp_research Research Sub-module
+ * @{
+ */
+
+function wamp_research_perm() {
+    return array(
+    'administer wamp research');
+}
+
+function wamp_research_menu() {
+
+    $items = array();
+
+    $items['admin/wamp/wamp_research'] = array(
+        #'title' => 'Research',
+        'title' => 'Administration',
+        'description' => 'Manage imports/exports and error types',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('wamp_research_overview_form'),
+        'access arguments' => array('administer wamp research'),
+        'file' => 'wamp_research.admin.inc',
+    );
+
+    $items['admin/wamp/wamp_research/sorted'] = array(
+        #'title' => 'Research',
+        'title' => 'Administration',
+        'type' => MENU_DEFAULT_LOCAL_TASK,
+        'weight' => -10,
+    );
+
+    $items['admin/wamp/wamp_research/import'] = array(
+        'title' => 'Import',
+        'description' => 'Import essays',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('wamp_research_import_form'),
+        'access arguments' => array('administer wamp research'),
+        'type' => MENU_LOCAL_TASK,
+        'file' => 'wamp_research.admin.inc',
+        'weight' => 10,
+    );
+
+    $items['admin/wamp/wamp_research/export'] = array(
+        'title' => 'Export XML',
+        'description' => 'Export essays in XML format',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('wamp_research_export_form'),
+        'access arguments' => array('administer wamp research'),
+        'type' => MENU_LOCAL_TASK,
+        'file' => 'wamp_research.admin.inc',
+        'weight' => 20,
+    );
+
+    $items['admin/wamp/wamp_research/exported'] = array(
+        'title' => 'Exported XML',
+        'description' => 'Overview exported essays in XML format',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('wamp_research_export_overview_form'),
+        'access arguments' => array('administer wamp research'),
+        'type' => MENU_LOCAL_TASK,
+        'file' => 'wamp_research.admin.inc',
+        'weight' => 20,
+    );
+
+    $items['admin/wamp/wamp_research/%wamp_research_imported_record/process'] = array(
+        'title' => 'Process Imported XML',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('wamp_research_import_process_form', 3),
+        'access arguments' => array('administer wamp research'),
+        'type' => MENU_CALLBACK,
+        'file' => 'wamp_research.admin.inc',
+        'weight' => 10,
+    );
+	
+	$items['admin/wamp/wamp_research/%wamp_research_imported_record/delete'] = array(
+        'title' => 'Delete Imported XML',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('wamp_research_delete_confirm', 3),
+        'access arguments' => array('administer wamp research'),
+        'type' => MENU_CALLBACK,
+        'file' => 'wamp_research.admin.inc',
+    );
+
+    $items['admin/wamp/wamp_research/export_m2'] = array(
+        'title' => 'Export M2',
+        'description' => 'Export essays in M2 format (per-annotation)',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('wamp_research_export_m2_form'),
+        'access arguments' => array('administer wamp research'),
+        'type' => MENU_LOCAL_TASK,
+        'file' => 'wamp_research.admin.inc',
+        'weight' => 20,
+    );    
+
+    $items['admin/wamp/wamp_research/error_type'] = array(
+        'title' => 'Error Type',
+        'description' => 'Configure error type',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('wamp_research_error_type_form'),
+        'access arguments' => array('administer wamp research'),
+        'type' => MENU_LOCAL_TASK,
+        'file' => 'wamp_research.admin.inc',
+        'weight' => 20,
+    );
+
+    return $items;
+}
+/**
+ * Implementation of hook_theme().
+ *
+ * Returns information about every themable function defined by the module.
+ */
+function wamp_research_theme() {
+    $items = array();
+    $items['wamp_research_overview_form'] = array(
+        'arguments' => array('form' => array()),
+        'file' => 'wamp_research.admin.inc',
+    );
+    $items['wamp_research_export_overview_form'] = array(
+        'arguments' => array('form' => array()),
+        'file' => 'wamp_research.admin.inc',
+    );
+    return $items;
+}
+
+/**
+ * Loader function for individual imported xml records.
+ *
+ * Because we use '%wamp_research_imported_record' as a wildcard in our hook_menu()
+ * handler, this function will also be called automatically when we go to edit
+ * or delete a record. Thanks, Menu API!.
+ *
+ * @param $record_id
+ *   An int containing the ID of a imported xml record.
+ * @return
+ *   A single record in array format, or FALSE if none matched the incoming ID.
+ */
+function wamp_research_imported_record_load($record_id) {
+    $sql = "select import_id, original_filename, uploaded_date, uid
+                FROM {wamp_essay_imported} i WHERE import_id=%d";
+    $result = db_query($sql, (int) $record_id);
+    if ($record = db_fetch_array($result)) {
+        return $record;
+    }
+    else {
+        return FALSE;
+    }
+}
+
+/**
+ * @} End of "defgroup wamp_research".
+ */
+
+?>

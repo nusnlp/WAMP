@@ -1,0 +1,179 @@
+<?php
+// @author Chan Hong Guan chanhg -at- comp.nus.edu.sg
+// $Id: wamp.install 175 2009-08-19 08:53:19Z chanhg $
+
+function wamp_install() {
+    drupal_install_schema('wamp');
+}
+
+function wamp_schema() {
+
+    $schema = array();
+
+    $schema['wamp_essay_revision'] = array(
+        'description' => t('Stores essays and their revisions'),
+        'fields' => array(
+            'nid' => array(
+                'type' => 'int',
+                'size' => 'normal',
+                'not null' => TRUE,
+                'description' => t('internal identifier.'),
+            ),
+            'vid' => array(
+                'type' => 'int',
+                'size' => 'normal',
+                'not null' => TRUE,
+                'description' => t('internal identifier.'),
+            ),
+			'essay_id' => array(
+                'type' => 'serial',
+                'size' => 'normal',
+                'not null' => TRUE,
+                'description' => t('unique identifier.'),
+            ),
+            //The section below is commented out to remove essay template information.
+            //
+            // 'essaytemplate_id' => array(
+            //     'type' => 'int',
+            //     'size' => 'normal',
+            //     'not null' => TRUE,
+            //     'description' => t('internal identifier.'),
+            // ),
+            //The section below is commented out to remove student information.
+            //
+            // 'student_id' => array(
+            //     'type' => 'int',
+            //     'size' => 'normal',
+            //     'not null' => TRUE,
+            //     'description' => t('student who submitted it'),
+            // ),
+			'bad_essay' => array(
+                'type' => 'int',
+                'size' => 'normal',
+                'not null' => TRUE,
+                'description' => t('flag for bad essay'),
+            ),
+			'bad_essay_uid' => array(
+                'type' => 'int',
+                'size' => 'normal',
+                'not null' => TRUE,
+                'description' => t('user who flagged bad essay'),
+            ),
+			'needs_editing' => array(
+                'type' => 'int',
+                'size' => 'normal',
+                'not null' => TRUE,
+                'description' => t('flag for an essay that needs minor editing'),
+            ),
+			'needs_editing_uid' => array(
+                'type' => 'int',
+                'size' => 'normal',
+                'not null' => TRUE,
+                'description' => t('user who flagged needs editing'),
+            ),
+            'status' => array(
+                'type' => 'int',
+                'size' => 'small',
+                'not null' => TRUE,
+                'description' => t('status of essay'),
+            )
+        ),
+        'primary key' => array('essay_id'),
+    );
+
+	$schema['wamp_essay_annotation'] = array(
+        'description' => t('Stores annotations for essay revisions'),
+        'fields' => array(
+            'nid' => array(
+                'type' => 'int',
+                'size' => 'normal',
+                'not null' => TRUE,
+                'description' => t('internal identifier.'),
+            ),
+            'vid' => array(
+                'type' => 'int',
+                'size' => 'normal',
+                'not null' => TRUE,
+                'description' => t('internal identifier.'),
+            ),
+            'annotator_id' => array(
+                'type' => 'int',
+                'size' => 'normal',
+                'not null' => TRUE,
+                'description' => t('annotator who annotated it'),
+            ),
+			'annotations' => array(
+                'type' => 'text',
+                'size' => 'medium',
+                'not null' => TRUE,
+                'description' => t('annotations'),
+            ),
+
+        ),
+        'primary key' => array('nid','vid','annotator_id'),
+    );
+    
+    //The section below is commented out to remove student information.
+    //
+	// $schema['wamp_student'] = array(
+    //     'description' => t('Stores annotations for essay revisions'),
+    //     'fields' => array(
+    //         'student_id' => array(
+    //             'type' => 'int',
+    //             'size' => 'normal',
+    //             'not null' => TRUE,
+    //             'description' => t('student identifier.'),
+    //         ),
+    //         'attribute' => array(
+    //             'type' => 'varchar',
+    //             'length' => '255',
+    //             'not null' => TRUE,
+    //             'description' => t('attribute identifier.'),
+    //         ),
+    //         'value' => array(
+    //            'type' => 'varchar',
+    //             'length' => '255',
+    //             'not null' => TRUE,
+    //             'description' => t('value of attribute'),
+    //         ),
+
+    //     ),
+    //     'primary key' => array('student_id','attribute'),
+    // );
+
+    //The section below is commented out to remove module information.
+    //
+	// $schema['wamp_module_spectator'] = array(
+    //     'description' => t('Stores spectators for modules'),
+    //     'fields' => array(
+    //         'modulespectator_id' => array(
+    //             'type' => 'serial',
+    //             'size' => 'normal',
+    //             'not null' => TRUE,
+    //             'description' => t('unique identifier.'),
+    //         ),
+    //         'module_id' => array(
+    //              'type' => 'int',
+    //             'size' => 'normal',
+    //             'not null' => TRUE,
+    //             'description' => t('module id'),
+    //         ),
+    //         'spectator_id' => array(
+    //              'type' => 'int',
+    //             'size' => 'normal',
+    //             'not null' => TRUE,
+    //             'description' => t('spectator id'),
+    //         ),
+
+    //     ),
+    //     'primary key' => array('modulespectator_id'),
+    // );
+    
+    return $schema;
+}
+
+function wamp_uninstall() {
+//    /drupal_uninstall_schema('wamp');
+}
+
+?>

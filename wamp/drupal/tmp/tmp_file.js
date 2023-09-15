@@ -1,0 +1,1 @@
+jQuery.extend(Drupal.settings, { "basePath": "/wamp/" });

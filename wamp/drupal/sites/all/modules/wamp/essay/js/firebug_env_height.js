@@ -1,0 +1,1 @@
+firebug.env.height = 200;

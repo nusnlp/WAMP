@@ -1,0 +1,570 @@
+<?php
+// @author Chan Hong Guan chanhg -at- comp.nus.edu.sg
+// $Id: wamp_essay.module 177 2009-08-19 11:45:19Z chanhg $
+
+/**
+ * @defgroup wamp_essay Essay Sub-module
+ * @{
+ */
+
+/**
+ * @file
+ * Lets admin manage essays, tutors annotate essays, and spectators view annotations
+ */
+
+/**
+ *
+ * Implementation of hook_menu
+ */
+function wamp_essay_menu() {
+
+	$items = array();
+
+	//The section below is commented out to remove essay template information.
+	//
+	// $items['admin/wamp/wamp_essay'] = array(
+	// 	'title' => 'Essays',
+	// 	'description' => 'Manage essays',
+	// 	'page callback' => 'drupal_get_form',
+	// 	'page arguments' => array('wamp_essay_template_overview_form'),
+	// 	'access arguments' => array('administer wamp essay'),
+	// 	'file' => 'wamp_essay.admin.inc',
+	// );
+
+	// $items['admin/wamp/wamp_essay/add'] = array(
+	// 	'title' => 'Add Essay',
+	// 	'page callback' => 'drupal_get_form',
+	// 	'page arguments' => array('wamp_essay_template_form'),
+	// 	'access arguments' => array('administer wamp essay'),
+	// 	'type' => MENU_LOCAL_TASK,
+	// 	'file' => 'wamp_essay.admin.inc',
+	// );
+
+	// $items['admin/wamp/wamp_essay/sorted'] = array(
+	// 	'title' => 'Essay Listing',
+	// 	'type' => MENU_DEFAULT_LOCAL_TASK,
+	// 	'weight' => -10,
+	// );
+
+	// $items['admin/wamp/wamp_essay/%wamp_essay_record/edit'] = array(
+	// 	'title' => 'Edit Essay',
+	// 	'page callback' => 'drupal_get_form',
+	// 	'page arguments' => array('wamp_essay_template_form', 3),
+	// 	'access arguments' => array('administer wamp essay'),
+	// 	'type' => MENU_CALLBACK,
+	// 	'file' => 'wamp_essay.admin.inc',
+	// );
+
+	// $items['admin/wamp/wamp_essay/%wamp_essay_record/delete'] = array(
+	// 	'title' => 'Delete Essay',
+	// 	'page callback' => 'drupal_get_form',
+	// 	'page arguments' => array('wamp_essay_template_delete_confirm', 3),
+	// 	'access arguments' => array('administer wamp essay'),
+	// 	'type' => MENU_CALLBACK,
+	// 	'file' => 'wamp_essay.admin.inc',
+	// );
+
+	//The section below is commented out to remove essay template information.
+	//
+	// $items['admin/wamp/wamp_essay/%wamp_essay_record/show_essay_submissions'] = array(
+	// 	'title' => 'List Essay Submissions',
+	// 	'page callback' => 'drupal_get_form',
+	// 	'page arguments' => array('wamp_essay_show_essay_submissions_form', 3),
+	// 	'access arguments' => array('administer wamp essay'),
+	// 	'type' => MENU_CALLBACK,
+	// 	'file' => 'wamp_essay.admin.inc',
+	// );
+	$items['admin/wamp/wamp_essay/show_essay_submissions'] = array(
+		
+		//The section below is commented out to reflect the changes in 'show essay submissions' pages.
+		// 'title' => 'List Essay Submissions',
+		'title' => 'Essays',
+		'description' => 'Manage essays',
+
+		'page callback' => 'drupal_get_form',
+		//The section below is commented out to reflect the changes in 'show essay submissions' pages.
+			'page arguments' => array('wamp_essay_show_essay_submissions_form', 3),
+		// 'page arguments' => array('wamp_essay_show_essay_submissions_form'),
+		'access arguments' => array('administer wamp essay'),
+		//The section below is commented out to reflect the changes in 'show essay submissions' pages.
+		// 'type' => MENU_CALLBACK,
+		'file' => 'wamp_essay.admin.inc',
+	);
+
+	$items['admin/wamp/wamp_essay/%wamp_essay_vid_tutor_node/view_annotation'] = array(
+		'title' => 'Annotate Essay',
+		'page callback' => 'wamp_essay_view_annotation_form',
+		'page arguments' => array(3),
+		'access callback' => 'wamp_essay_access',
+		'access arguments' => array('view', NULL),
+		'file' => 'wamp_essay.annotator.inc',
+	);
+
+	$items['wamp/wamp_essay/%wamp_essay_record/write_essay'] = array(
+		'title' => drupal_ucfirst($type->name),
+		'title callback' => 'check_plain',
+		'page callback' => 'node_add',
+		'page arguments' => array(1, 2, false),
+		'access callback' => 'node_access',
+		'access arguments' => array('create', 'wamp_essay'),
+		'description' => $type->description,
+		'file path' => drupal_get_path('module','node'),
+		'file' => 'node.pages.inc',
+	);
+
+	$items['wamp/wamp_essay/%wamp_essay_vid_node/update_essay'] = array(
+		'title' => drupal_ucfirst($type->name),
+		'title callback' => 'check_plain',
+		'page callback' => 'node_page_edit',
+		'page arguments' => array(2, false),
+		'access callback' => 'node_access',
+		'access arguments' => array('update', 2, false),
+		'description' => $type->description,
+		'file path' => drupal_get_path('module','node'),
+		'file' => 'node.pages.inc',
+	);
+
+	$items['wamp/wamp_essay/%wamp_essay_vid_tutor_node/view_annotation'] = array(
+		'title' => 'Annotate Essay',
+		'page callback' => 'wamp_essay_view_annotation_form',
+		'page arguments' => array(2),
+		'access callback' => 'wamp_essay_access',
+		'access arguments' => array('annotate', NULL),
+		'file' => 'wamp_essay.annotator.inc',
+	);
+
+	$items['wamp/wamp_essay/%wamp_essay_vid_tutor_node/view_corrected_essay'] = array(
+		'title' => 'Corrected Essay',
+		'page callback' => 'wamp_essay_view_corrected_essay_form',
+		'page arguments' => array(2),
+		'access callback' => 'wamp_essay_access',
+		'access arguments' => array('annotate', NULL),
+		'file' => 'wamp_essay.annotator.inc',
+	);
+
+	$items['wamp/wamp_essay/%wamp_essay_vid_node/annotate_essay'] = array(
+		'title' => 'Annotate Essay',
+		'page callback' => 'wamp_essay_annotate_form',
+		'page arguments' => array(2),
+		'access callback' => 'wamp_essay_access',
+		'access arguments' => array('annotate', NULL),
+		'file' => 'wamp_essay.annotator.inc',
+	);
+
+	//The section below is commented out to remove module information.
+	//
+	// $items['wamp/prompts/essays/%wamp_essay_group_record'] = array(
+	// 	'title' => 'Submissions',
+	// 	'description' => 'Submissions',
+	// 	'page callback' => 'wamp_overview_form_all_essays',
+	// 	'page arguments' => array(3),
+	// 	'access arguments' => array('access wamp'),
+	// 	'file path' => drupal_get_path('module', 'wamp'),
+	// 	'file' => 'wamp.user.inc',
+	// );
+
+	$items['wamp/wamp_essay/%wamp_essay_vid_node/annotation_save'] = array(
+		'title' => 'Annotate Essay',
+		'page callback' => 'wamp_essay_annotation_save_ajax',
+		'page arguments' => array(2),
+		'type' => MENU_CALLBACK,
+		'access callback' => 'wamp_essay_access',
+		'access arguments' => array('annotate', NULL),
+		'file' => 'wamp_essay.annotator.inc',
+	);
+
+	$items['wamp/wamp_essay/%wamp_essay_vid_tutor_node/annotation_readonly'] = array(
+		'title' => 'Annotate Essay',
+		'page callback' => 'wamp_essay_annotation_ro_ajax',
+		'page arguments' => array(2),
+		'type' => MENU_CALLBACK,
+		'access callback' => 'wamp_essay_access',
+		'access arguments' => array('annotate', NULL),
+		'file' => 'wamp_essay.annotator.inc',
+	);
+
+	$items['admin/wamp/wamp_essay/%wamp_essay_vid_tutor_node/annotation_readonly'] = array(
+		'title' => 'View Essay Annotations',
+		'page callback' => 'wamp_essay_annotation_ro_ajax',
+		'page arguments' => array(3),
+		'type' => MENU_CALLBACK,
+		'access callback' => 'wamp_essay_access',
+		'access arguments' => array('view', NULL),
+		'file' => 'wamp_essay.annotator.inc',
+	);
+
+	$items['admin/wamp/wamp_essay/%wamp_essay_vid_node/delete_essay'] = array(
+		'title' => 'Delete Essay',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('wamp_essay_delete_essay', 3),
+		'type' => MENU_CALLBACK,
+		'access callback' => 'wamp_essay_access',
+		'access arguments' => array('annotate', NULL),
+		'file' => 'wamp_essay.admin.inc',
+	);
+
+	$items['admin/wamp/wamp_essay/%wamp_essay_vid_node/restore_essay'] = array(
+		'title' => 'Restore Essay',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('wamp_essay_restore_essay', 3),
+		'type' => MENU_CALLBACK,
+		'access callback' => 'wamp_essay_access',
+		'access arguments' => array('annotate', NULL),
+		'file' => 'wamp_essay.admin.inc',
+	);
+
+	$items['admin/wamp/wamp_essay/%wamp_essay_vid_node/finish_editing'] = array(
+		'title' => 'Finish Editing',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('wamp_essay_finish_editing', 3),
+		'type' => MENU_CALLBACK,
+		'access callback' => 'wamp_essay_access',
+		'access arguments' => array('annotate', NULL),
+		'file' => 'wamp_essay.admin.inc',
+	);
+
+	$items['admin/wamp/wamp_essay/%wamp_essay_vid_node/not_bad_essay'] = array(
+		'title' => 'Mark as Not Bad',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('wamp_essay_not_bad_essay', 3),
+		'type' => MENU_CALLBACK,
+		'access callback' => 'wamp_essay_access',
+		'access arguments' => array('annotate', NULL),
+		'file' => 'wamp_essay.admin.inc',
+	);
+
+	return $items;
+}
+
+/**
+ * Implementation of hook_theme().
+ *
+ * Returns information about every themable function defined by the module.
+ */
+function wamp_essay_theme() {
+	$items = array();
+	
+	//The section below is commented out to remove essay template information.
+	//
+	// $items['wamp_essay_template_overview_form'] = array(
+	// 	'arguments' => array('form' => array()),
+	// 	'file' => 'wamp_essay.admin.inc',
+	// );
+
+	$items['wamp_essay_show_essay_submissions_form'] = array(
+		'arguments' => array('form' => array()),
+		'file' => 'wamp_essay.admin.inc',
+	);
+
+	$items['wamp_essay_flag_form'] = array(
+		'arguments' => array('form' => array()),
+		'file' => 'wamp_essay.annotator.inc',
+	);
+
+	return $items;
+}
+
+//The section below is commented out to remove essay template information.
+//
+// /**
+//  * Inserts a new essay template record, or updates an existing one.
+//  *
+//  * Automatically inserts or updates, based on whether the template's unique ID has
+//  * been set yet. Because drupal_write_record() updates the record itself (adding
+//  * the unique ID after the database has been updated), we return the record
+//  * after saving it.
+//  *
+//  * This allows any calling function to check the id of the returned record and
+//  * act on the ID as needed (redirecting to a 'view' page after inserting, etc).
+//  *
+//  * @param $record
+//  *   A record to be saved. If $record['record_id'] is set, the record will be updated.
+//  *   Otherwise, a new record will be inserted into the database.
+//  * @return
+//  *   The saved record, with its ID set.
+//  */
+// function wamp_essay_record_save($record) {
+// 	if (isset($record['essaytemplate_id'])) {
+// 		drupal_write_record('wamp_essay_template', $record, 'essaytemplate_id');
+// 	}
+// 	else {
+// 		drupal_write_record('wamp_essay_template', $record);
+// 	}
+// 	return $record;
+// }
+
+//The section below is commented out to remove essay template information.
+// 
+// /**
+//  * Loader function for individual wamp essay template records.
+//  *
+//  * Because we use '%wamp_essay_record' as a wildcard in our hook_menu()
+//  * handler, this function will also be called automatically when we go to edit
+//  * or delete a record. Thanks, Menu API!.
+//  *
+//  * @param $record_id
+//  *   An int containing the ID of a essay template record.
+//  * @return
+//  *   A single record in array format, or FALSE if none matched the incoming ID.
+//  */
+// function wamp_essay_record_load($record_id) {
+// 	$record_id = (int) $record_id;
+// 	//The section below is commented out to remove module information.
+// 	//
+// 	// $sql = "SELECT essaytemplate_id, title, description, module_id, word_limit
+//     //         FROM {wamp_essay_template}
+//     //         WHERE essaytemplate_id = %d";
+// 	$sql = "SELECT essaytemplate_id, title, description, word_limit
+//             FROM {wamp_essay_template}
+//             WHERE essaytemplate_id = %d";
+// 	$result = db_query($sql, $record_id);
+// 	if ($record = db_fetch_array($result))
+// 		return $record;
+// 	else return FALSE;
+// }
+
+//The section below is commented out to remove module information & the function is not used.
+//
+// /**
+//  * Loader function for essay template record with module group id.
+//  *
+//  * The format is "<essay template id>.<module group id>".
+//  *
+//  * Because we use '%wamp_essay_group_record' as a wildcard in our hook_menu()
+//  * handler, this function will also be called automatically when we go to edit
+//  * or delete a record. Thanks, Menu API!.
+//  *
+//  * @param $record_id
+//  *   An int containing the ID of a essay template record.
+//  * @return
+//  *   A single record in array format, or FALSE if none matched the incoming ID.
+//  */
+// function wamp_essay_group_record_load($record_id) {
+// 	$essay_template_id = strtok($record_id, '.');
+// 	$modulegroup_id = strtok('.');
+
+// 	$essay_template_id = (int) $essay_template_id;
+// 	$modulegroup_id = (int) $modulegroup_id;
+
+// 	$sql = "SELECT essaytemplate_id, title, description, m.module_id, word_limit, mg.modulegroup_id
+//             FROM {wamp_essay_template} t, {wamp_module} m, {wamp_module_group} mg
+//             WHERE m.module_id = mg.module_id AND t.module_id = m.module_id
+// 				AND essaytemplate_id = %d AND mg.modulegroup_id = %d";
+// 	$result = db_query($sql, $essay_template_id, $modulegroup_id);
+// 	if ($record = db_fetch_array($result))
+// 		return $record;
+// 	else return FALSE;
+// }
+
+//The section below is commented out to remove essay template information & the function is no longer used.
+//
+/**
+ * Deletes a essay template, given its ID.
+ *
+ * No actual deletion is done. However, the essay template's display flag is
+ * set to 0.
+ *
+ * @param $essaytemplate_id
+ *   An int containing the ID of the essaytemplate.
+ */
+function wamp_essay_record_delete($essaytemplate_id) {
+
+	$essaytemplate_id = (int) $essaytemplate_id;
+	$sql = "UPDATE {wamp_essay_template}
+            SET display_flag = 0
+            WHERE essaytemplate_id = %d";
+	db_query($sql, $essaytemplate_id);
+}
+
+/**
+ * Loader function for individual essay records. An essay record makes use of
+ * the Drupal node system. Essay records are associated with essay templates but
+ * are also nodes.
+ *
+ * Because we use '%wamp_essay_revision_record' as a wildcard in our hook_menu()
+ * handler, this function will also be called automatically when we go to edit
+ * or delete a record. Thanks, Menu API!.
+ *
+ * @param $record_id
+ *   An int containing the ID of an essay node.
+ * @return
+ *   A single record in array format, or FALSE if none matched the incoming ID.
+ */
+function wamp_essay_node_load($record_id) {
+	$record_id = (int) $record_id;
+	$node = node_load($record_id);
+
+	return $node;
+}
+
+/**
+ * Loader function for individual essay records with vid information.
+ *
+ * The format is "<node id or nid>.<revision id or vid>
+ *
+ * Because we use '%wamp_essay_vid_node' as a wildcard in our hook_menu()
+ * handler, this function will also be called automatically when we go to edit
+ * or delete a record. Thanks, Menu API!.
+ *
+ * @param $record_id
+ *   An int containing the ID of a record.
+ * @return
+ *   A single record in array format, or FALSE if none matched the incoming ID.
+ */
+function wamp_essay_vid_node_load($record_id) {
+//the input from the link comes in the pattern module_id.annotator_id
+//so this code breaks it down into module and annotator IDs
+	$nid = strtok($record_id,'.');
+	$vid = strtok(".");
+	//The section below is commented out to remove module information
+	// $modulegroup_id = strtok(".");
+
+	$nid = (int) $nid;
+	$vid = (int) $vid;
+	//The section below is commented out to remove module information
+	// $modulegroup_id = (int) $modulegroup_id;
+	
+	//The section below is commented out to remove module information
+	// return array('nid'=> $nid, 'vid' => $vid, 'modulegroup_id' => $modulegroup_id);
+	return array('nid'=> $nid, 'vid' => $vid);
+}
+
+/**
+ * Loader function for individual essay records with vid, module group and tutor information.
+ *
+ * The format is "<node id or nid>.<revision id or vid>.<tutor's user id>".
+ *
+ * Because we use '%wamp_essay_vid_node' as a wildcard in our hook_menu()
+ * handler, this function will also be called automatically when we go to edit
+ * or delete a record. Thanks, Menu API!.
+ *
+ * @param $record_id
+ *   An int containing the ID of a record.
+ * @return
+ *   A single record in array format, or FALSE if none matched the incoming ID.
+ */
+function wamp_essay_vid_tutor_node_load($record_id) {
+//the input from the link comes in the pattern module_id.annotator_id
+//so this code breaks it down into module and annotator IDs
+	$nid = strtok($record_id,'.');
+	$vid = strtok('.');
+	//The section below is commented out to remove module information
+	// $modulegroup_id = strtok('.');
+	$annotator_id = strtok('.');
+
+	$nid = (int) $nid;
+	$vid = (int) $vid;
+	//The section below is commented out to remove module information
+	// $modulegroup_id = (int) $modulegroup_id;
+	$annotator_id = (int) $annotator_id;
+
+	//The section below is commented out to remove module information
+	// return array('nid' => $nid, 'vid' => $vid, 'modulegroup_id' => $modulegroup_id, 'annotator' => $annotator_id);
+	return array('nid' => $nid, 'vid' => $vid, 'annotator' => $annotator_id);
+}
+
+//The section below is commented out to remove essay template information
+//
+// /**
+//  * Implementation of hook_node_info().
+//  *
+//  * This creates the node type student essay when installing the module
+//  */
+// function wamp_essay_node_info() {
+// 	return array(
+// 		'wamp_essay' => array(
+// 		'name' => t('Student Essay'),
+// 		'module' => 'wamp_essay',
+// 		'description' => t('A <em>student essay</em> is a piece of writing. A <em>student essay</em> once submitted by a student, can be annotated and graded by a annotator'),
+// 		'title_label' => t('Student Essay'),
+// 		'has_body' => TRUE,
+// 		'body_label' => 'Essay',
+// 		)
+// 	);
+// }
+
+/**
+ * Implementation of hook_perm
+ *
+ * Permissions available for wamp essay module
+ */
+function wamp_essay_perm() {
+	return array(
+	'administer wamp essay',
+//	'create essay content', 'edit own essay content', 'edit any essay content',
+//	'delete own essay content', 'delete any essay content',
+	'annotate any essay');
+}
+
+/*
+ * Implementation of hook_access
+ */
+function wamp_essay_access($op, $node, $account = NULL) {
+	global $user;
+	if (empty($account)) $account = $user;
+
+	switch ($op) {
+		case 'annotate':
+			return user_access('annotate any essay', $account);
+		case 'view':
+			return user_access('administer wamp', $account) ;
+	}
+}
+
+/**
+ * Implementation of hook_form().
+ *
+ * Invoke when students writes or updates an essay
+ */
+function wamp_essay_form(&$node, $form_state, $record) {
+	global $user;
+	$type = node_get_types('type', $node);
+
+	$title = '';
+	if ($node->title != '') $title = $node->title;
+	else if ($record['title'] != '') $title = $record['title'];
+		else $title = $form_state['values']['title'];
+
+
+	$form = array(
+		'#cache' => TRUE,
+	);
+
+	$form['_title'] = array(
+		'#type' => 'markup',
+		'#value' => '<div class="form-item"><label>Essay Title:<label>'.$title."</div>",
+	);
+
+	$form['essaytemplate_id'] = array(
+		'#type' => 'value',
+		'#value' => $record['essaytemplate_id'],
+	);
+
+	if ($type->has_body)
+		$form['body_field'] = node_body_field($node, $type->body_label, $type->min_word_count);
+
+	$form['title'] = array(
+		'#type' => 'value',
+		'#value' => $title,
+	);
+
+	return $form;
+}
+
+/**
+ * Implementation of hook_form_alter().
+ *
+ * Loads sites/all/modules/wamp/drupal.css for the forms "Show Essay Submissions"
+ * and "Flag Essay".
+ *
+ * @ingroup formapi
+ */
+function wamp_essay_form_alter(&$form, $form_state, $form_id) {
+	if ($form_id == 'wamp_essay_show_essay_submissions_form' || $form_id == 'wamp_essay_flag_form') {
+		drupal_add_css(drupal_get_path('module','wamp').'/drupal.css');
+	}
+}
+
+/**
+ * @} End of "defgroup wamp_essay".
+ */

@@ -1,0 +1,1313 @@
+<?php
+// $Id: api.module,v 1.88.2.3 2009/01/28 21:05:03 drumm Exp $
+
+/**
+ * @file
+ * Generates and displays API documentation pages.
+ *
+ * This is an implementation of a subset of the Doxygen documentation generator
+ * specification, tuned to produce output that best benefits the Drupal code base.
+ * It is designed to assume the code it documents follows Drupal coding conventions,
+ * and supports the following Doxygen constructs:
+ *   @ mainpage
+ *   @ file
+ *   @ defgroup
+ *   @ ingroup
+ *   @ addtogroup (as a synonym of @ ingroup)
+ *   @ param
+ *   @ return
+ *   @ link
+ */
+
+/**
+ * Regular expression for matching file names.
+ */
+define('API_RE_FILENAME', '([a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)+)');
+
+/**
+ * Regular expression for starting inline @tags.
+ */
+define('API_RE_TAG_START', '(?<!\\\)@');
+
+/**
+ * The maximum number of path elements to look for in file names.
+ */
+define('API_MAX_FILE_ELEMENTS', 5);
+
+/**
+ * Implementation of hook_help()
+ */
+function api_help($path, $arg) {
+  switch ($path) {
+    case 'admin/help#api':
+      return t('
+<p>
+This is an implementation of a subset of the Doxygen documentation generator specification, tuned to produce output that best benefits the Drupal code base.
+</p>
+
+<p>
+It is designed to assume the code it documents follows Drupal coding conventions,
+and supports the following Doxygen constructs:
+<ul>
+  <li>@mainpage
+  <li>@file
+  <li>@defgroup
+  <li>@ingroup
+  <li>@addtogroup (as a synonym of @ ingroup)
+  <li>@param
+  <li>@return
+  <li>@link
+  <li>@see
+  <li>@{
+  <li>@}
+</ul>
+</p>
+
+<p>
+The module was designed to produce the Drupal developer documentation available at !api_site.
+</p>
+
+<p>
+<strong>Set up</strong>
+<p>
+
+<p>
+Visit the !api_settings_page to configure the module. You must have the relevant Drupal code base on the same machine as the site hosting the API module. Follow the descriptions in the \'Branches to index\' section to set up the code base for indexing.
+</p>
+
+<p>
+Indexing of PHP functions is also supported. If the site has internet access, then the default settings for the \'PHP Manual\' section should work fine. For local development environments that have a PHP manual installed, you can edit the paths to point to the appropriate locations.
+</p>
+
+<p>
+The module indexes code branches during cron runs, so make sure the site has cron functionality set up properly.
+</p>
+', array('!api_site' => l('http://api.drupal.org', 'http://api.drupal.org', array('absolute' => TRUE)), '!api_settings_page' => l(t('API settings page'), 'admin/settings/api')));
+
+    case 'admin/settings/api/refresh':
+      return t('Parse all indexed code files again, even if they have not been modified.');
+  }
+}
+
+function api_get_branches($_reset = FALSE) {
+  static $branches;
+
+  if (!isset($branches) || $_reset) {
+    $result = db_query('SELECT branch_name, title, directory FROM {api_branch} ORDER BY weight');
+    $branches = array();
+    while ($branch = db_fetch_object($result)) {
+      $branches[$branch->branch_name] = $branch;
+    }
+  }
+
+  return $branches;
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function api_menu() {
+  $items = array();
+
+  $access_callback = 'user_access';
+  $access_arguments = array('access API reference');
+
+  $branches = api_get_branches();
+  $default_branch = variable_get('api_default_branch', NULL);
+
+  // Part 1: No object, Default branch
+  $items['api'] = array(
+    'title' => 'API reference',
+    'access callback' => $access_callback,
+    'access arguments' => $access_arguments,
+    'page callback' => 'api_page_branch',
+    'page arguments' => array($default_branch),
+  );
+  $items['api/functions'] = array(
+    'title' => 'Functions',
+    'page callback' => 'api_page_listing',
+    'access callback' => $access_callback,
+    'access arguments' => $access_arguments,
+    'page arguments' => array($default_branch, 'function'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['api/constants'] = array(
+    'title' => 'Constants',
+    'page callback' => 'api_page_listing',
+    'access callback' => $access_callback,
+    'access arguments' => $access_arguments,
+    'page arguments' => array($default_branch, 'constant'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['api/globals'] = array(
+    'title' => 'Globals',
+    'page callback' => 'api_page_listing',
+    'access callback' => $access_callback,
+    'access arguments' => $access_arguments,
+    'page arguments' => array($default_branch, 'global'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['api/files'] = array(
+    'title' => 'Files',
+    'page callback' => 'api_page_listing',
+    'access callback' => $access_callback,
+    'access arguments' => $access_arguments,
+    'page arguments' => array($default_branch, 'file'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['api/groups'] = array(
+    'title' => 'Topics',
+    'page callback' => 'api_page_listing',
+    'access callback' => $access_callback,
+    'access arguments' => $access_arguments,
+    'page arguments' => array($default_branch, 'group'),
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['api/search'] = array(
+    'title' => 'API Search',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('api_search_form', $default_branch),
+    'access callback' => $access_callback,
+    'access arguments' => $access_arguments,
+    'type' => MENU_CALLBACK,
+  );
+  $items['apis'] = array(
+    'title' => 'API search',
+    'page callback' => 'api_search_redirect',
+    'access callback' => $access_callback,
+    'access arguments' => $access_arguments,
+    'type' => MENU_CALLBACK,
+  );
+  $items['api/autocomplete'] = array(
+    'page callback' => 'api_autocomplete',
+    'access callback' => $access_callback,
+    'access arguments' => $access_arguments,
+    'type' => MENU_CALLBACK,
+  );
+  $items['admin/settings/api'] = array(
+    'title' => 'API reference',
+    'description' => 'Configure branches for documentation.',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer API reference'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('api_page_admin_form'),
+    'file' => 'api.admin.inc',
+  );
+  $items['admin/settings/api/branches'] = array(
+    'title' => 'Branches',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer API reference'),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+  $items['admin/settings/api/branches/list'] = array(
+    'title' => 'List',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer API reference'),
+    'type' => MENU_DEFAULT_LOCAL_TASK
+  );
+  $items['admin/settings/api/branches/new'] = array(
+    'title' => 'New branch',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer API reference'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('api_branch_edit_form'),
+    'file' => 'api.admin.inc',
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['admin/settings/api/branches/%'] = array(
+    'title' => 'Edit @branch',
+    'title arguments' => array('@branch' => 4),
+    'access callback' => 'user_access',
+    'access arguments' => array('administer API reference'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('api_branch_edit_form', 4),
+    'file' => 'api.admin.inc',
+    'type' => MENU_CALLBACK,
+  );
+  $items['admin/settings/api/branches/%/delete'] = array(
+    'access callback' => 'user_access',
+    'access arguments' => array('administer API reference'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('api_branch_delete_form', 4),
+    'file' => 'api.admin.inc',
+    'type' => MENU_CALLBACK,
+  );
+  $items['admin/settings/api/php'] = array(
+    'title' => 'PHP manual',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer API reference'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('api_php_manual_index_form'),
+    'file' => 'api.admin.inc',
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['admin/settings/api/refresh'] = array(
+    'title' => 'Refresh index',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer API reference'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('api_reindex_form'),
+    'file' => 'api.admin.inc',
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  // Function dumps for IDEs and code editors.
+  $items['api/function_dump/%api_branch'] = array(
+    'page callback' => 'api_page_function_dump',
+    'callback arguments' => array(2),
+    'type' => MENU_CALLBACK,
+  );
+
+  // Part 2: Object provided, default branch.
+  $items['api/function/%api_object'] = array(
+    'title' => 'Function',
+    'load arguments' => array('function', $default_branch),
+    'page callback' => 'api_page_function',
+    'page arguments' => array(2),
+    'access callback' => $access_callback,
+    'access arguments' => $access_arguments,
+    'type' => MENU_CALLBACK,
+  );
+  $items['api/constant/%api_object'] = array(
+    'title' => 'Constant',
+    'load arguments' => array('constant', $default_branch),
+    'page callback' => 'api_page_constant',
+    'page arguments' => array(2),
+    'access callback' => $access_callback,
+    'access arguments' => $access_arguments,
+    'type' => MENU_CALLBACK,
+  );
+  $items['api/global/%api_object'] = array(
+    'title' => 'Global',
+    'load arguments' => array('global', $default_branch),
+    'page callback' => 'api_page_global',
+    'page arguments' => array(2),
+    'access callback' => $access_callback,
+    'access arguments' => $access_arguments,
+    'type' => MENU_CALLBACK,
+  );
+  // This is nonideal. We have a dynamic number of elments in the middle of the
+  // path when the menu system expects that sort of thing to be at the end.
+  for ($i = 0; $i < API_MAX_FILE_ELEMENTS; $i += 1) {
+    $elements = str_repeat('/%', $i);
+    $items['api/file/%api_filename'. $elements] = array(
+      'title' => 'File',
+      'load arguments' => array('%map', '%index', $default_branch),
+      'page callback' => 'api_page_file',
+      'page arguments' => array(2),
+      'access callback' => $access_callback,
+      'access arguments' => $access_arguments,
+      'type' => MENU_CALLBACK,
+    );
+  }
+  $items['api/group/%api_object'] = array(
+    'title' => 'Topic',
+    'load arguments' => array('group', $default_branch),
+    'page callback' => 'api_page_group',
+    'page arguments' => array(2),
+    'access callback' => $access_callback,
+    'access arguments' => $access_arguments,
+    'type' => MENU_CALLBACK,
+  );
+
+  foreach ($branches as $branch) {
+    // Part 3: No object, specific branch
+    $items['api/'. $branch->branch_name] = array(
+      'title' => $branch->title,
+      'page callback' => 'api_page_branch',
+      'page arguments' => array($branch->branch_name),
+      'access callback' => $access_callback,
+      'access arguments' => $access_arguments,
+      'type' => ($branch->branch_name == $default_branch) ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
+    );
+    $items['api/functions/'. $branch->branch_name] = array(
+      'title' => $branch->title,
+      'page callback' => 'api_page_listing',
+      'page arguments' => array($branch->branch_name, 'function'),
+      'access callback' => $access_callback,
+      'access arguments' => $access_arguments,
+      'type' => ($branch->branch_name == $default_branch) ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
+    );
+    $items['api/constants/'. $branch->branch_name] = array(
+      'title' => $branch->title,
+      'page callback' => 'api_page_listing',
+      'page arguments' => array($branch->branch_name, 'constant'),
+      'access callback' => $access_callback,
+      'access arguments' => $access_arguments,
+      'type' => ($branch->branch_name == $default_branch) ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
+    );
+    $items['api/globals/'. $branch->branch_name] = array(
+      'title' => $branch->title,
+      'page callback' => 'api_page_listing',
+      'page arguments' => array($branch->branch_name, 'global'),
+      'access callback' => $access_callback,
+      'access arguments' => $access_arguments,
+      'type' => ($branch->branch_name == $default_branch) ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
+    );
+    $items['api/files/'. $branch->branch_name] = array(
+      'title' => $branch->title,
+      'page callback' => 'api_page_listing',
+      'page arguments' => array($branch->branch_name, 'file'),
+      'access callback' => $access_callback,
+      'access arguments' => $access_arguments,
+      'type' => ($branch->branch_name == $default_branch) ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
+    );
+    $items['api/groups/'. $branch->branch_name] = array(
+      'title' => $branch->title,
+      'page callback' => 'api_page_listing',
+      'page arguments' => array($branch->branch_name, 'group'),
+      'access callback' => $access_callback,
+      'access arguments' => $access_arguments,
+      'type' => ($branch->branch_name == $default_branch) ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
+    );
+
+    // Part 4: Object provided, specific branch.
+    $items['api/function/%api_object/'. $branch->branch_name] = array(
+      'title' => $branch->title,
+      'load arguments' => array('function', $branch->branch_name),
+      'page callback' => 'api_page_function',
+      'page arguments' => array(2),
+      'access callback' => $access_callback,
+      'access arguments' => $access_arguments,
+      'type' => ($branch->branch_name == $default_branch) ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
+    );
+
+    $items['api/constant/%api_object/'. $branch->branch_name] = array(
+      'title' => $branch->title,
+      'load arguments' => array('constant', $branch->branch_name),
+      'page callback' => 'api_page_constant',
+      'page arguments' => array(2),
+      'access callback' => $access_callback,
+      'access arguments' => $access_arguments,
+      'type' => ($branch->branch_name == $default_branch) ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
+    );
+    $items['api/global/%api_object/'. $branch->branch_name] = array(
+      'title' => $branch->title,
+      'load arguments' => array('global', $branch->branch_name),
+      'page callback' => 'api_page_global',
+      'page arguments' => array(2),
+      'access callback' => $access_callback,
+      'access arguments' => $access_arguments,
+      'type' => ($branch->branch_name == $default_branch) ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
+    );
+    // This is nonideal. We have a dynamic number of elments in the middle of
+    // the path when the menu system expects that sort of thing to be at the
+    // end.
+    for ($i = 0; $i < API_MAX_FILE_ELEMENTS; $i += 1) {
+      $elements = str_repeat('/%', $i);
+      $items['api/file/%api_filename'. $elements .'/'. $branch->branch_name] = array(
+        'title' => $branch->title,
+        'load arguments' => array('%map', '%index', $branch->branch_name),
+        'page callback' => 'api_page_file',
+        'page arguments' => array(2),
+        'access callback' => $access_callback,
+        'access arguments' => $access_arguments,
+        'type' => ($branch->branch_name == $default_branch) ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
+      );
+      $items['api/file/%api_filename'. $elements .'/'. $branch->branch_name .'/documentation'] = array(
+        'title' => 'View documentation',
+        'load arguments' => array('%map', '%index', $branch->branch_name),
+        'type' => MENU_DEFAULT_LOCAL_TASK,
+        'weight' => -10,
+      );
+      $items['api/file/%api_filename'. $elements .'/'. $branch->branch_name .'/source'] = array(
+        'title' => 'View source',
+        'load arguments' => array('%map', '%index', $branch->branch_name),
+        'page callback' => 'api_page_file_source',
+        'page arguments' => array(2),
+        'access callback' => $access_callback,
+        'access arguments' => $access_arguments,
+        'type' => MENU_LOCAL_TASK,
+      );
+    }
+    $items['api/group/%api_object/'. $branch->branch_name] = array(
+      'title' => $branch->title,
+      'load arguments' => array('group', $branch->branch_name),
+      'page callback' => 'api_page_group',
+      'page arguments' => array(2),
+      'access callback' => $access_callback,
+      'access arguments' => $access_arguments,
+      'type' => ($branch->branch_name == $default_branch) ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
+    );
+    $items['api/search/'. $branch->branch_name .'/%menu_tail'] = array(
+      'title' => $branch->title,
+      'page callback' => 'api_search_listing',
+      'page arguments' => array($branch->branch_name, 3),
+      'access callback' => $access_callback,
+      'access arguments' => $access_arguments,
+      'type' => MENU_LOCAL_TASK,
+    );
+  }
+  return $items;
+}
+
+function api_filename_load($first, $map, $index, $branch_name = NULL) {
+  $branches = api_get_branches();
+
+  $end = count($map) - 1;
+  $end -= in_array($map[$end], array('source', 'documentation'));
+  $end -= isset($branches[$map[$end]]);
+  $filename = implode('/', array_slice($map, $index, $end - $index + 1));
+
+  return api_object_load($filename, 'file', $branch_name);
+}
+
+/**
+ * Load an object from its name, type and branch.
+ */
+function api_object_load($object_name, $object_type, $branch_name = NULL) {
+  static $cache;
+
+  if (is_null($branch_name)) {
+    $branch_name = variable_get('api_default_branch', NULL);
+  }
+
+  $key = $object_name .':'. $object_type .':'. $branch_name;
+  if (!isset($cache[$key])) {
+    // Prepare the query
+    $tables = array('{api_documentation} ad');
+    $fields = array('ad.*');
+    $where = "WHERE ad.object_name = '%s' AND ad.object_type = '%s' AND ad.branch_name = '%s'";
+    $arguments = array($object_name, $object_type, $branch_name);
+
+    if ($object_type == 'function') {
+      $tables[] = 'LEFT JOIN {api_function} af ON (af.did = ad.did)';
+      $fields[] = 'af.*';
+    }
+    else if ($object_type == 'file') {
+      $tables[] = 'LEFT JOIN {api_file} af ON (af.did = ad.did)';
+      $fields[] = 'af.*';
+    }
+    // Now build it
+    $cache[$key] = db_fetch_object(db_query('SELECT '. implode(', ', $fields) .' FROM '. implode(' ', $tables) .' '. $where, $arguments));
+  }
+
+  return $cache[$key];
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+function api_perm() {
+  return array('access API reference', 'administer API reference');
+}
+
+function api_theme() {
+  return array(
+    'api_branch_table' => array(
+      'arguments' => array('element' => NULL),
+    ),
+    'api_expandable' => array(
+      'arguments' => array(
+        'prompt' => NULL,
+        'content' => NULL,
+        'class' => NULL,
+      ),
+      'template' => 'templates/api-expandable',
+    ),
+    'api_related_topics' => array(
+      'arguments' => array(
+        'topics' => array(),
+      ),
+      'template' => 'templates/api-related-topics',
+    ),
+    'api_functions' => array(
+      'arguments' => array(
+        'functions' => array(),
+      ),
+      'template' => 'templates/api-functions',
+    ),
+    'api_function_page' => array(
+      'arguments' => array(
+        'function' => NULL,
+        'signatures' => NULL,
+        'documentation' => NULL,
+        'parameters' => NULL,
+        'return' => NULL,
+        'related_topics' => NULL,
+        'call' => NULL,
+        'code' => NULL,
+      ),
+      'template' => 'templates/api-function-page',
+    ),
+    'api_constant_page' => array(
+      'arguments' => array(
+        'constant' => NULL,
+        'documentation' => NULL,
+        'code' => NULL,
+        'related_topics' => NULL,
+      ),
+      'template' => 'templates/api-constant-page',
+    ),
+    'api_global_page' => array(
+      'arguments' => array(
+        'global' => NULL,
+        'documentation' => NULL,
+        'code' => NULL,
+        'related_topics' => NULL,
+      ),
+      'template' => 'templates/api-global-page',
+    ),
+    'api_file_page' => array(
+      'arguments' => array(
+        'file' => NULL,
+        'documentation' => NULL,
+        'constants' => NULL,
+        'globals' => NULL,
+        'functions' => NULL,
+      ),
+      'template' => 'templates/api-file-page'
+    ),
+    'api_group_page' => array(
+      'arguments' => array(
+        'documentation' => NULL,
+        'constants' => NULL,
+        'globals' => NULL,
+        'functions' => NULL,
+      ),
+      'template' => 'templates/api-group-page'
+    ),
+  );
+}
+
+function api_init() {
+  drupal_add_css(drupal_get_path('module', 'api') .'/api.css');
+  drupal_add_js(drupal_get_path('module', 'api') .'/api.js');
+}
+
+function api_block($op, $delta = NULL, $edit = array()) {
+  switch ($op) {
+    case 'list':
+      return array(
+        'api-search' => array(
+          'info' => t('API search'),
+          'cache' => BLOCK_CACHE_PER_PAGE | BLOCK_CACHE_PER_ROLE,
+        ),
+        'navigation' => array(
+          'info' => t('API navigation'),
+          'cache' => BLOCK_CACHE_PER_PAGE | BLOCK_CACHE_PER_ROLE,
+        ),
+      );
+
+    case 'view':
+      $branches = api_get_branches();
+      $branch = api_get_active_branch();
+
+      switch ($delta) {
+        case 'api-search':
+          if (user_access('access API reference') && isset($branches[$branch])) {
+            return array(
+              'subject' => t('Search @branch', array('@branch' => $branches[$branch]->title)),
+              'content' => drupal_get_form('api_search_form', $branches[$branch]->branch_name),
+            );
+          }
+          return;
+
+        case 'navigation':
+          if (user_access('access API reference') && isset($branches[$branch])) {
+            // We forgo the menu system because we want to link to non-default
+            // local tasks; as of Drupal 5.x, this seems impossible.
+            if ($branch == variable_get('api_default_branch', NULL)) {
+              $suffix = '';
+            }
+            else {
+              $suffix = '/'. $branch;
+            }
+
+            $links = array();
+            $links[] = l($branches[$branch]->title, 'api'. $suffix);
+            $links[] = l(t('Constants'), 'api/constants'. $suffix);
+            $links[] = l(t('Files'), 'api/files'. $suffix);
+            $links[] = l(t('Functions'), 'api/functions'. $suffix);
+            $links[] = l(t('Globals'), 'api/globals'. $suffix);
+            $links[] = l(t('Topics'), 'api/groups'. $suffix);
+
+            return array(
+              'content' => theme('item_list', $links),
+            );
+          }
+          return;
+      }
+  }
+}
+
+/**
+ * Show link for theme('api_expandable').
+ */
+function api_show_l($text) {
+  return l($text, $_REQUEST['q'], array('attributes' => array('class' => 'show-content')));
+}
+
+/**
+ * Hide link for theme('api_expandable').
+ */
+function api_hide_l($text) {
+  return l($text, $_REQUEST['q'], array('attributes' => array('class' => 'hide-content')));
+}
+
+/**
+ * Save an API branch.
+ *
+ * @param $branch
+ *   A branch object, with branch_name, title, and directory variables.
+ * @param $old_branch_name
+ *   To replace a branch, provide the old branch name.
+ */
+function api_save_branch($branch, $old_branch_name = NULL) {
+  if (empty($old_branch_name)) {
+    drupal_write_record('api_branch', $branch);
+    if (is_null(variable_get('api_default_branch', NULL))) {
+      variable_set('api_default_branch', $branch->branch_name);
+    }
+  }
+  else {
+    if ($branch->branch_name !== $old_branch_name) {
+      db_query("UPDATE {api_branch} SET branch_name = '%s' WHERE branch_name = '%s'", $branch->branch_name, $old_branch_name);
+      db_query("UPDATE {api_documentation} SET branch_name = '%s' WHERE branch_name = '%s'", $branch->branch_name, $old_branch_name);
+      db_query("UPDATE {api_file} f INNER JOIN {api_documentation} d ON d.did = f.did SET f.modified = 52 WHERE d.branch_name = '%s'", $branch->branch_name);
+      if (variable_get('api_default_branch', NULL) === $old_branch_name) {
+        variable_set('api_default_branch', $branch->branch_name);
+      }
+    }
+    drupal_write_record('api_branch', $branch, 'branch_name');
+  }
+
+  // Reweight all branches.
+  $branches = api_get_branches(TRUE);
+  uksort($branches, 'version_compare');
+  $weight = 0;
+  foreach ($branches as $branch) {
+    $branch->weight = $weight;
+    $weight += 1;
+    drupal_write_record('api_branch', $branch, 'branch_name');
+  }
+
+  menu_rebuild();
+}
+
+function api_get_active_branch() {
+  static $branch;
+
+  if (!isset($branch)) {
+    if (arg(0) == 'api') {
+      if (in_array(arg(1), array('function_dump', 'functions', 'constants', 'globals', 'files', 'groups', 'search'))) {
+        $possible_branch = arg(2);
+      }
+      elseif (in_array(arg(1), array('function', 'constant', 'global', 'group'))) {
+        $possible_branch = arg(3);
+      }
+      elseif (arg(1) == 'file') {
+        // Starting at arg(2), we have a variable number of directories. The
+        // possible branch name is either in the last, or, if we are on a
+        // secondary local task, second to last argument.
+        $current = arg(3);
+        $i = 4;
+        while (!is_null(arg($i))) {
+          $last = $current;
+          $current = arg($i);
+          $i += 1;
+        }
+
+        if (in_array($current, array('documentation', 'source'))) {
+          $possible_branch = $last;
+        }
+        else {
+          $possible_branch = $current;
+        }
+      }
+      else {
+        // Maybe we are on one of the branch home pages.
+        $possible_branch = arg(1);
+      }
+    }
+
+    if (isset($possible_branch)) {
+      $branches = api_get_branches();
+      if (isset($branches[$possible_branch])) {
+        $branch = $possible_branch;
+      }
+    }
+    if (!isset($branch)) {
+      $branch = variable_get('api_default_branch', NULL);
+    }
+  }
+
+  return $branch;
+}
+
+function api_search_form($form_state, $branch_name) {
+  $form = array();
+
+  $form['branch_name'] = array(
+    '#type' => 'value',
+    '#value' => $branch_name,
+  );
+  $form['search'] = array(
+    '#title' => t('Function, file, or topic'),
+    '#type' => 'textfield',
+    '#autocomplete_path' => 'api/autocomplete/'. $branch_name,
+    '#default_value' => '',
+    '#required' => TRUE,
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Search'),
+  );
+
+  return $form;
+}
+
+function api_search_form_submit($form, &$form_state) {
+  $form_state['redirect'] = 'api/search/'. $form_state['values']['branch_name'] .'/'. $form_state['values']['search'];
+}
+
+function api_search_redirect() {
+  $args = func_get_args();
+  drupal_goto('api/search/'. variable_get('api_default_branch', NULL) .'/'. implode('/', $args));
+}
+
+/**
+ * Menu callback; perform a global search for documentation.
+ */
+function api_search_listing($branch_name) {
+  $search_text = func_get_args();
+  array_shift($search_text);
+  $search_text = implode('/', $search_text);
+  drupal_set_title(t('Search for %search', array('%search' => $search_text)));
+
+  $count = db_result(db_query("SELECT count(*) FROM {api_documentation} WHERE branch_name = '%s' AND title = '%s'", $branch_name, $search_text));
+  if ($count == 1) {
+    // Exact match.
+    $item = db_fetch_object(db_query("SELECT * FROM {api_documentation} WHERE branch_name = '%s' AND title = '%s'", $branch_name, $search_text));
+    drupal_goto('api/'. $item->object_type .'/'. $item->object_name .'/'. $item->branch_name);
+  }
+  else {
+    // Wildcard search.
+    $result = pager_query("SELECT * FROM {api_documentation} WHERE branch_name = '%s' AND object_name LIKE '%%%s%%' ORDER BY title", 50, 0, NULL, $branch_name, $search_text);
+    return api_render_listing($result, t('No search results found.')) . theme('pager', NULL, 50, 0);
+  }
+}
+
+/**
+ * Prepare a listing of potential documentation matches for a branch.
+ */
+function api_autocomplete($branch_name, $search = '') {
+  $matches = array();
+  $result = db_query_range("SELECT title FROM {api_documentation} WHERE title LIKE '%%%s%%' AND branch_name = '%s' ORDER BY LENGTH(title)", $search, $branch_name, 0, 20);
+  while ($r = db_fetch_object($result)) {
+    $matches[$r->title] = check_plain($r->title);
+  }
+  print drupal_json($matches);
+}
+
+/**
+ * Menu callback; displays the main documentation page.
+ */
+function api_page_branch($branch_name) {
+  $result = db_query("SELECT documentation FROM {api_documentation} WHERE object_name = '%s' AND branch_name = '%s' AND object_type = 'mainpage'", $branch_name, $branch_name);
+  if ($branch = db_fetch_object($result)) {
+    return api_link_documentation($branch->documentation, $branch_name);
+  }
+  else {
+    return t('A main page for this branch has not been indexed. A documentation comment with <code>@mainpage {title}</code> needs to exist, or has not been indexed yet. For Drupal core, this is availiable in the <a href="http://cvs.drupal.org/viewvc.py/drupal/contributions/docs/developer/">developer documentation</a> in the contributions repository.');
+  }
+}
+
+/**
+ * Menu callback; displays an object listing.
+ */
+function api_page_listing($branch_name, $object_type) {
+  $result = pager_query("SELECT * FROM {api_documentation} WHERE branch_name = '%s' AND object_type = '%s' ORDER BY title", 50, 0, NULL, $branch_name, $object_type);
+  return api_render_listing($result) . theme('pager', NULL, 50, 0);
+}
+
+/**
+ * Render a table with an overview of documentation objects.
+ *
+ * @param $result
+ *   A database query result object.
+ * @param $empty_message
+ *   An optional string to display instead of an empty table.
+ */
+function api_render_listing($result, $empty_message = NULL) {
+  $headers = array(
+    t('Name'),
+    t('Location'),
+    t('Description'),
+  );
+
+  $rows = array();
+  while ($object = db_fetch_object($result)) {
+    $rows[] = array(
+      l($object->title, 'api/'. $object->object_type .'/'. $object->object_name .'/'. $object->branch_name),
+      '<small>'. api_file_link($object) .'</small>',
+      api_link_documentation($object->summary, $object->branch_name),
+    );
+  }
+
+  if (count($rows) == 0) {
+    if ($empty_message == NULL) {
+      return '';
+    }
+    else {
+      return '<p><em>'. $empty_message .'</em></p>';
+    }
+  }
+  else {
+    return theme('table', $headers, $rows);
+  }
+}
+
+/**
+ * Menu callback; produces a textual listing of all functions for use in IDEs.
+ */
+function api_page_function_dump($branch_name) {
+  $result = db_query("SELECT d.title, d.summary, f.signature FROM {api_documentation} d INNER JOIN {api_function} f ON d.did = f.did WHERE d.branch_name = '%s' AND d.object_type = 'function'", $branch_name);
+  while ($object = db_fetch_object($result)) {
+    print($object->signature);
+    print(' ### '. $object->summary ."\n");
+  }
+}
+
+/**
+ * Menu callback; displays documentation for a function.
+ */
+function api_page_function($function) {
+  drupal_set_title($function->title);
+
+  $last_signature = '';
+  $signatures = array();
+  $n = 0;
+  $result = db_query("SELECT d.branch_name, f.signature FROM {api_documentation} d INNER JOIN {api_function} f ON f.did = d.did INNER JOIN {api_branch} b ON d.branch_name = b.branch_name WHERE d.object_type = 'function' AND d.title = '%s' ORDER BY b.weight", $function->title);
+  while ($signature = db_fetch_object($result)) {
+    if ($signature->signature == $last_signature) {
+      // Collapse unchanged signatures to one line.
+      $signature_info[$n - 1]['max branch name'] = $signature->branch_name;
+      $signature_info[$n - 1]['active'] = $signature_info[$n - 1]['active'] || $signature->branch_name == $function->branch_name;
+    }
+    else {
+      $tokens = token_get_all('<?php '. $signature->signature);
+      if ($tokens[1] == '&') {
+        $name = '&'. $tokens[2][1];
+      }
+      else {
+        $name = $tokens[1][1];
+      }
+      $signature_info[$n] = array(
+        'branch name' => $signature->branch_name,
+        'max branch name' => $signature->branch_name,
+        'active' => $signature->branch_name == $function->branch_name,
+        'arguments' => array(),
+        'other' => array(),
+      );
+      $start = TRUE;
+      $d = 0;
+      $a = -1;
+      $signature_info[$n]['other'][$a] = '';
+      foreach ($tokens as $token) {
+        $d += in_array($token, array('(', '{', '[')) - in_array($token, array(')', '}', ']'));
+        if ($d == 1 && $start && is_array($token) && $token[0] == T_VARIABLE) {
+          // New argument
+          $a += 1;
+          $signature_info[$n]['arguments'][$a] = $token[1];
+          $signature_info[$n]['other'][$a] = '';
+          $start = FALSE;
+        }
+        elseif ($d >= 1 && is_array($token)) {
+          $signature_info[$n]['other'][$a] .= $token[1];
+        }
+        elseif ($d >= 1) {
+          $signature_info[$n]['other'][$a] .= $token;
+          // Start looking for a new argument if we see a comma.
+          $start = $start || ($d == 1 && $token == ',');
+        }
+      }
+      $last_signature = $signature->signature;
+      $n += 1;
+    }
+  }
+  foreach ($signature_info as $n => $info) {
+    $new = array();
+    if (isset($signature_info[$n - 1])) {
+      $new = array_diff($info['arguments'], $signature_info[$n - 1]['arguments']);
+    }
+    $old = array();
+    if (isset($signature_info[$n + 1])) {
+      $old = array_diff($info['arguments'], $signature_info[$n + 1]['arguments']);
+    }
+    $branch_label = $info['branch name'];
+    if ($info['branch name'] != $info['max branch name']) {
+      $branch_label .= ' – '. $info['max branch name'];
+    }
+    $signature = $name . $info['other'][-1];
+    foreach ($signature_info[$n]['arguments'] as $key => $argument) {
+      if (in_array($argument, $old)) {
+        $signature .= '<del>'. $argument .'</del>';
+      }
+      elseif (in_array($argument, $new)) {
+        $signature .= '<ins>'. $argument .'</ins>';
+      }
+      else {
+        $signature .= $argument;
+      }
+      $signature .= $info['other'][$key];
+    }
+    $signature .= ')';
+    $signatures[$branch_label] = array(
+      'signature' => $signature,
+      'url' => 'api/function/'. $name .'/'. $info['max branch name'],
+      'active' => $info['active'],
+    );
+  }
+
+  $documentation = api_link_documentation($function->documentation, $function->branch_name);
+  $parameters = api_link_documentation($function->parameters, $function->branch_name);
+  $return = api_link_documentation($function->return_value, $function->branch_name);
+  $code = api_link_code($function->code, $function->branch_name);
+  $related_topics = api_related_topics($function->did, $function->branch_name);
+
+  $call_count = db_result(db_query("SELECT count(*) FROM {api_reference_storage} r INNER JOIN {api_documentation} d ON r.from_did = d.did AND d.object_type = 'function' WHERE r.to_did = %d", $function->did));
+  $call = '';
+  if ($call_count > 0) {
+    $result = db_query("SELECT d.object_name, d.title, d.summary, d.file_name, d.branch_name, d.object_type FROM {api_reference_storage} r INNER JOIN {api_documentation} d ON r.from_did = d.did AND d.object_type = 'function' WHERE r.to_did = %d ORDER BY d.title", $function->did);
+    $call_functions = array();
+    while ($object = db_fetch_object($result)) {
+      $call_functions[] = array(
+        'function' => l($object->title, 'api/'. $object->object_type .'/'. $object->object_name .'/'. $object->branch_name),
+        'file' => api_file_link($object),
+        'description' => api_link_documentation($object->summary, $object->branch_name),
+      );
+    }
+    $call_title = format_plural($call_count, '1 function calls @name()', '@count functions call @name()', array('@name' => $function->title));
+    $call = theme('api_expandable', '<h3>'. api_show_l('▸ '. $call_title) .'</h3>', '<h3>'. api_hide_l('▾ '. $call_title) .'</h3>'. theme('api_functions', $call_functions));
+  }
+
+  return theme('api_function_page', $function, $signatures, $documentation, $parameters, $return, $related_topics, $call, $code);
+}
+
+/**
+ * Menu callback; displays documentation for a constant.
+ */
+function api_page_constant($constant) {
+  drupal_set_title($constant->title);
+
+  $documentation = api_link_documentation($constant->documentation, $constant->branch_name);
+  $code = api_link_code($constant->code, $constant->branch_name);
+  $related_topics = api_related_topics($constant->did, $constant->branch_name);
+
+  return theme('api_constant_page', $constant, $documentation, $code, $related_topics);
+}
+
+/**
+ * Menu callback; displays documentation for a global.
+ */
+function api_page_global($global) {
+  drupal_set_title($global->title);
+
+  $documentation = api_link_documentation($global->documentation, $global->branch_name);
+  $related_topics = api_related_topics($global->did, $global->branch_name);
+  $code = api_link_code($global->code, $global->branch_name);
+
+  return theme('api_global_page', $global, $documentation, $code, $related_topics);
+}
+
+/**
+ * Menu callback; displays documentation for a file.
+ */
+function api_page_file($file) {
+  drupal_set_title($file->title);
+
+  $documentation = api_link_documentation($file->documentation, $file->branch_name);
+  $result = db_query("SELECT title, object_name, summary, object_type, branch_name FROM {api_documentation} WHERE file_name = '%s' AND branch_name = '%s' AND object_type IN ('constant', 'global', 'function') ORDER BY title", $file->object_name, $file->branch_name);
+  $rows = array(
+    'constant' => array(),
+    'global' => array(),
+    'function' => array(),
+  );
+  while ($object = db_fetch_object($result)) {
+    $rows[$object->object_type][] = array(
+      l($object->title, 'api/'. $object->object_type .'/'. $object->object_name .'/'. $object->branch_name),
+      api_link_documentation($object->summary, $file->branch_name),
+    );
+  }
+  $header = array(
+    t('Name'),
+    t('Description'),
+  );
+  $constants = '';
+  if (count($rows['constant']) > 0) {
+    $constants = theme('table', $header, $rows['constant']);
+  }
+  $globals = '';
+  if (count($rows['global']) > 0) {
+    $globals = theme('table', $header, $rows['global']);
+  }
+  $functions = '';
+  if (count($rows['function']) > 0) {
+    $functions = theme('table', $header, $rows['function']);
+  }
+
+  return theme('api_file_page', $file, $documentation, $constants, $globals, $functions);
+}
+
+/**
+ * Menu callback; displays source code for a file.
+ */
+function api_page_file_source($file) {
+  drupal_set_title($file->title);
+
+  return api_link_code($file->code, $file->branch_name);
+}
+
+/**
+ * Menu callback; displays documentation for a group.
+ */
+function api_page_group($group) {
+  drupal_set_title($group->title);
+
+  $documentation = api_link_documentation($group->documentation, $group->branch_name);
+
+  $rows = array(
+    'constant' => array(),
+    'global' => array(),
+    'function' => array(),
+  );
+  $result = db_query("SELECT d.object_name, d.title, d.summary, d.file_name, d.object_type, d.branch_name FROM {api_reference_storage} r INNER JOIN {api_documentation} d ON r.from_did = d.did AND d.object_type IN ('constant', 'global', 'function') WHERE r.to_did = %d ORDER BY d.object_name", $group->did);
+  while ($object = db_fetch_object($result)) {
+    $rows[$object->object_type][] = array(
+      l($object->title, 'api/'. $object->object_type .'/'. $object->object_name .'/'. $object->branch_name),
+      '<small>'. api_file_link($object) .'</small>',
+      api_link_documentation($object->summary, $object->branch_name),
+    );
+  }
+  $header = array(
+    t('Name'),
+    t('Location'),
+    t('Description'),
+  );
+  $constants = '';
+  if (count($rows['constant']) > 0) {
+    $constants = theme('table', $header, $rows['constant']);
+  }
+  $globals = '';
+  if (count($rows['global']) > 0) {
+    $globals = theme('table', $header, $rows['global']);
+  }
+  $functions = '';
+  if (count($rows['function']) > 0) {
+    $functions = theme('table', $header, $rows['function']);
+  }
+
+  return theme('api_group_page', $documentation, $constants, $globals, $functions);
+}
+
+function api_related_topics($did, $branch_name) {
+  $header = array(
+    t('Name'),
+    t('Description'),
+  );
+  $topics = array();
+  $result = db_query("SELECT d.object_name, d.title, d.summary FROM {api_reference_storage} r INNER JOIN {api_documentation} d ON r.to_did = d.did AND d.object_type = 'group' WHERE r.from_did = %d", $did);
+  while ($group = db_fetch_object($result)) {
+    $topics[l($group->title, 'api/group/'. $group->object_name .'/'. $branch_name)] = api_link_documentation($group->summary, $branch_name);
+  }
+  if (count($topics) > 0) {
+    return theme('api_related_topics', $topics);
+  }
+  return '';
+}
+
+function api_file_link($object) {
+  return dirname($object->file_name) .'/'. l(basename($object->file_name), 'api/file/'. $object->file_name .'/'. $object->branch_name);
+}
+
+function api_cron() {
+  include_once './'. drupal_get_path('module', 'api') .'/parser.inc';
+  api_update_all_branches();
+}
+
+/**
+ * Turn function names into links.
+ */
+function api_link_code($code, $branch_name) {
+  return _api_link_documentation($code, $branch_name, array('code function'));
+}
+
+/**
+ * Turn function and file names into links. This is done on output because the
+ * identifiers which are linked frequently change.
+ */
+function api_link_documentation($documentation, $branch_name) {
+  $documentation = _api_link_documentation($documentation, $branch_name, array('tags', 'link', 'function', 'file'));
+  // Remove escaping from \@.
+  return preg_replace('!\\\@!', '@', $documentation);
+}
+
+function _api_link_documentation($documentation, $branch_name, $stages = array()) {
+  $patterns = array(
+    // Find HTML tags, which will not be filtered.
+    'tags' => '/(<[^>]+?>)/',
+
+    // Find @link
+    'link' => '/'. API_RE_TAG_START .'link\s+(.*)\s+@endlink/',
+
+    // Find function names, which are preceded by white space and followed by
+    // '('.
+    'function' => '!(?<=^|\s)([a-zA-Z0-9_]+)\(!',
+
+    // Find function names in marked-up code.
+    'code function' => '!<span class="php-function-or-constant">([a-zA-Z0-9_]+)</span>!',
+
+    // Find file names, which are an arbitrary number of strings joined with
+    // '.'
+    'file' => '%(?<=^|\s)'. API_RE_FILENAME .'(?=$|\s|[.,:;?!])%e',
+  );
+  $stage = array_shift($stages);
+
+  $callback_match = 'api_link_name';
+  $prepend = '';
+  $append = '';
+
+  switch ($stage) {
+    case 'tags':
+      $callback_match = NULL;
+      break;
+
+    case 'link':
+      $callback_match = 'api_link_link';
+      break;
+
+    case 'function':
+      $append = '(';
+      break;
+
+    case 'code function':
+      $prepend = '<span class="php-function-or-constant">';
+      $append = '</span>';
+      break;
+  }
+
+  if (count($stages) > 0) {
+    $callback = '_api_link_documentation';
+  }
+  else {
+    $callback = NULL;
+  }
+
+  return api_split($patterns[$stage], $documentation, $callback_match, array($branch_name, $prepend, $append), $callback, array($branch_name, $stages));
+}
+
+/**
+ * Split a string using a regular expression and process the text using
+ * callbacks.
+ *
+ * @param $pattern
+ *   The regular expression to match for splitting.
+ * @param $subject
+ *   The string to process.
+ * @param $callback_match
+ *   Function name to be called for text which matches $pattern. The first
+ *   argument will be the parenthesized expression in the pattern. Should
+ *   return a string. NULL to pass the text through unchanged.
+ * @param $callback_match_arguments
+ *   An array of additional parameters for $callback_match.
+ * @param $callback
+ *   Function name to be called for text which does not match $pattern. The
+ *   first argument will be the text. Should return a string. NULL to pass the
+ *   text through unchanged.
+ * @param $callback_arguments
+ *   An array of additional parameters for $callback.
+ * @return
+ *   The original string, with both matched and unmatched portions filtered by
+ *   the appropriate callbacks.
+ */
+function api_split($pattern, $subject, $callback_match = NULL, $callback_match_arguments = array(), $callback = NULL, $callback_arguments = array()) {
+  $return = '';
+  $matched = false;
+  foreach (preg_split($pattern, $subject, -1, PREG_SPLIT_DELIM_CAPTURE) as $part) {
+    if ($matched) {
+      if (is_null($callback_match)) {
+        $return .= $part;
+      }
+      else {
+        $return .= call_user_func_array($callback_match, array_merge(array($part), $callback_match_arguments));
+      }
+    }
+    else {
+      if (is_null($callback)) {
+        $return .= $part;
+      }
+      else {
+        $return .= call_user_func_array($callback, array_merge(array($part), $callback_arguments));
+      }
+    }
+    $matched = !$matched;
+  }
+  return $return;
+}
+
+/**
+ * Link an object name to its documentation.
+ */
+function api_link_name($name, $branch_name, $prepend = '', $append = '', $text = NULL, $is_link = FALSE) {
+  static $local_objects, $php_functions;
+
+  if (is_null($local_objects)) {
+    $result = db_query("SELECT object_name, title, object_type, summary FROM {api_documentation} WHERE branch_name = '%s'", $branch_name);
+    $local_objects = array(
+      'function' => array(),
+      'file' => array(),
+      'group' => array(),
+      'constant' => array(),
+      'global' => array(),
+    );
+    while ($object = db_fetch_object($result)) {
+      $local_objects[$object->object_type][$object->title] = $object;
+      if ($object->object_type == 'file' || $object->object_type == 'group') {
+        $local_objects[$object->object_type][basename($object->object_name)] = $object;
+      }
+    }
+  }
+
+  if (is_null($php_functions)) {
+    $result = db_query("SELECT object_name, summary FROM {api_documentation} WHERE branch_name = 'php' AND object_type = 'function'");
+    $php_functions = array();
+    while ($function = db_fetch_object($result)) {
+      $php_functions[$function->object_name] = $function->summary;
+    }
+  }
+
+  if (is_null($text)) {
+    $text = $name;
+  }
+
+  if ($is_link && array_key_exists($name, $local_objects['group'])) {
+    return $prepend . l($text, 'api/group/'. $local_objects['group'][$name]->object_name .'/'. $branch_name) . $append;
+  }
+  elseif (array_key_exists($name, $local_objects['function'])) {
+    return $prepend . l($text, 'api/function/'. $local_objects['function'][$name]->object_name .'/'. $branch_name, array('attributes' => array('title' => $local_objects['function'][$name]->summary, 'class' => 'local'))) . $append;
+  }
+  elseif (array_key_exists($name, $local_objects['file'])) {
+    return l($text, 'api/file/'. $local_objects['file'][$name]->object_name .'/'. $branch_name, array('attributes' => array('title' => $local_objects['file'][$name]->summary, 'class' => 'local')));
+  }
+  elseif (array_key_exists($name, $local_objects['constant'])) {
+    return l($text, 'api/constant/'. $local_objects['constant'][$name]->object_name .'/'. $branch_name, array('attributes' => array('title' => $local_objects['constant'][$name]->summary, 'class' => 'local')));
+  }
+  elseif (array_key_exists($name, $local_objects['global'])) {
+    return l($text, 'api/global/'. $local_objects['global'][$name]->object_name .'/'. $branch_name, array('attributes' => array('title' => $local_objects['global'][$name]->summary, 'class' => 'local')));
+  }
+  elseif (array_key_exists($name, $php_functions)) {
+    $link = strtr(variable_get('api_php_funcpath', 'http://php.net/!function'), array('!function' => $name));
+    return l($text, $link, array('attributes' => array('title' => $php_functions[$name], 'class' => 'php-manual')));
+  }
+  else {
+    return $prepend . $text . $append;
+  }
+}
+
+function api_link_link($name, $branch_name, $prepend = '', $append = '') {
+  $words = preg_split('/\s+/', $name);
+  $name = array_shift($words);
+  return api_link_name($name, $branch_name, $prepend, $append, implode(' ', $words), TRUE);
+}

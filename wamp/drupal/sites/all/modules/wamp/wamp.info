@@ -1,0 +1,8 @@
+; @author Chan Hong Guan chanhg -at- comp.nus.edu.sg
+; $Id: wamp.info 8 2009-05-18 09:17:54Z chanhg $
+name = WAMP
+description = Writing Annotation Marking Platform
+core = 6.x
+package = WAMP
+project = "wamp"
+version = 6.x-0.1.x

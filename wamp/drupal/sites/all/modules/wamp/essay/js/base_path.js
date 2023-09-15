@@ -1,0 +1,1 @@
+var drupal_base_path = '". base_path() ."';

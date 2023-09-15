@@ -1,0 +1,42 @@
+<?php
+// $Id: api_link_code.test,v 1.5 2008/12/26 21:19:50 drumm Exp $
+
+include_once './'. drupal_get_path('module', 'api') .'/tests/api_test_case.php';
+
+class ApiLinkCodeTest extends ApiTestCase {
+  function getInfo() {
+    return array(
+      'name' => t('api_link_code()'),
+      'description' => t('Test the api_link_code() function.'),
+      'group' => 'API Module',
+    );
+  }
+  
+  function testApiLinkCode() {
+    $tests = array(
+      // Should be linked
+      array(
+        'message' => 'Marked-up function name linking',
+        'data' => '<span class="php-function-or-constant">sample_function</span>',
+        'expected' => '<span class="php-function-or-constant"><a href="'. url('api/function/sample_function/6') .'" title="A sample function." class="local">sample_function</a></span>',
+      ),
+
+      // Should not be linked
+      array(
+        'message' => 'Function name linking',
+        'data' => 'sample_function',
+        'expected' => 'sample_function',
+      ),
+      array(
+        'message' => 'Function name linking with (',
+        'data' => 'sample_function(',
+        'expected' => 'sample_function(',
+      ),
+    );
+
+    foreach ($tests as $test) {
+      $result = api_link_code($test['data'], '6');
+      $this->assertEqual($result, $test['expected'], $test['message']);
+    }
+  }
+}

@@ -1,0 +1,122 @@
+<?php
+// @author Chan Hong Guan chanhg -at- comp.nus.edu.sg
+// $Id: wamp_essay.install 57 2009-06-15 07:49:44Z chanhg $
+
+/**
+ * Implementation of hook_install().
+ *
+ * This hook is called the first time the module is installed. Unless it is
+ * explicitly uninstalled, disabling and re-enabling will not trigger this hook
+ * a second time.
+ */
+function wamp_essay_install() {
+  drupal_install_schema('wamp_essay');
+}
+
+/**
+ * Implementation of hook_schema().
+ *
+ * This hook should return a SchemaAPI array with a full definition of the most
+ * up-to-date version of the module's database tables.
+ */
+function wamp_essay_schema()
+{
+    //The section below is commented out to remove essay template information.
+    //
+    // $schema['wamp_essay_template'] = array(
+    //     'description' => t('Stores essays'),
+    //     'fields' => array(
+    //         'essaytemplate_id' => array(
+    //             'type' => 'serial',
+    //             'size' => 'normal',
+    //             'not null' => TRUE,
+    //             'description' => t('internal identifier.'),
+    //         ),
+    //         'title' => array(
+    //             'type' => 'varchar',
+    //             'length' => 255,
+    //             'not null' => TRUE,
+    //             'description' => t('title of the essay'),
+    //         ),
+    //         'description' => array(
+    //             'type' => 'varchar',
+    //             'length' => 255,
+    //             'not null' => TRUE,
+    //             'description' => t('description and instructions for the essay'),
+    //         ),
+    //         //The section below is commented out to remove module information.
+    //         // 'module_id' => array(
+    //         //     'type' => 'int',
+    //         //     'size' => 'normal',
+    //         //     'not null' => TRUE,
+    //         //     'description' => t('module the essay is for'),
+    //         // ),
+    //         'annotator_id' => array(
+    //             'type' => 'int',
+    //             'size' => 'normal',
+    //             'not null' => TRUE,
+    //             'description' => t('annotator who created the essay template'),
+    //         ),
+    //         'word_limit' => array(
+    //             'type' => 'int',
+    //             'size' => 'normal',
+    //             'not null' => FALSE,
+    //             'description' => t('word count'),
+    //         ),
+    //         'display_flag' => array(
+    //             'type' => 'int',
+    //             'size' => 'normal',
+    //             'not null' => TRUE,
+    //             'description' => t('to show or not to show'),
+    //         ),
+    //     ),
+    //     'primary key' => array('essaytemplate_id'),
+    // );
+
+    // $schema['wamp_essay_template_dateline'] = array(
+    //     'description' => t('Stores essays datelines'),
+    //     'fields' => array(
+    //         'essaytemplate_id' => array(
+    //             'type' => 'int',
+    //             'size' => 'normal',
+    //             'not null' => TRUE,
+    //             'description' => t('essay template identifier.'),
+    //         ),
+    //         'draft_num' => array(
+    //             'type' => 'int',
+    //             'size' => 'normal',
+    //             'not null' => TRUE,
+    //             'description' => t('draft num'),
+    //         ),
+    //         'draft_num_desc' => array(
+    //             'type' => 'varchar',
+    //             'length' => 5,
+    //             'not null' => TRUE,
+    //             'description' => t('draft num description'),
+    //         ),
+    //         'dateline' => array(
+    //             'type' => 'datetime',
+    //             'size' => 'normal',
+    //             'not null' => TRUE,
+    //             'description' => t('dateline for submission'),
+    //         ),
+    //     ),
+    //     'primary key' => array('essaytemplate_id', 'draft_num'),
+    // );
+    $schema = array();
+    
+    return $schema;
+}
+
+/**
+ * Implementation of hook_install().
+ *
+ * This hook is called the first time the module is installed. Unless it is
+ * explicitly uninstalled, disabling and re-enabling will not trigger this hook
+ * a second time.
+ */
+function wamp_essay_uninstall() {
+    //drupal_uninstall_schema('wamp_essay');
+}
+
+?>
