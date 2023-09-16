@@ -1,8 +1,8 @@
 # WAMP: Writing, Annotation, and Marking Platform
 
-WAMP is publicly available at : https://sterling8.d2.comp.nus.edu.sg/wamp
+WAMP is a web-based annotation tool that tackles the issue of generating annotated corpora by allowing annotators to annotate essays with ease and export the resulting annotated essays for use in GEC research.
 
-## Demo
+## Demo Video
 https://github.com/nusnlp/WAMP/assets/67945439/a24cbee0-f12e-4596-8dcb-eb913a4d5b68
 
 ## Dependency Versions
@@ -119,3 +119,6 @@ In order to upload essays into the system, essays need to be in XML format (e.g.
 ### Annotating essays
 1) Login as an annotator, go to "View Essays" and click on "Annotate" to annotate the essay.
 2) Annotate the essay by highlighting the grammatical errors, assigning the appropriate error type, and proposing suitable corrections.
+
+## License
+The code in this repository are licensed under the GNU General Public License Version 3 (see [License](./LICENSE.txt)). For commercial use of the source code of WAMP, separate commercial licensing is also available. Please contact Hwee Tou Ng (nght@comp.nus.edu.sg)
