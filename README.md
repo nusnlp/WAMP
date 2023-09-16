@@ -3,7 +3,7 @@
 WAMP is publicly available at : https://sterling8.d2.comp.nus.edu.sg/wamp
 
 ## Demo
-https://github.com/nusnlp/WAMP/assets/67945439/bf3ef195-a069-4d68-a2cf-512a3c698c21
+https://github.com/nusnlp/WAMP/assets/67945439/a24cbee0-f12e-4596-8dcb-eb913a4d5b68
 
 ## Dependency Versions
 - Apache (2.2)
