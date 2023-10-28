@@ -47,14 +47,14 @@ TO 'root'@'localhost' IDENTIFIED BY '$PASSWORD';
 ```
 
 ### 4) Drupal
-1) Inside the Docker container, configure the **$db_url** from "$DOCKER_PATH/drupal/sites/default/settings.php" accordingly.
+1) Inside the Docker container, configure the **$db_url** from "$DOCKER_PATH/wamp/drupal/sites/default/settings.php" accordingly.
     * **$DOCKER_PATH** is the path set in step 2 of [Docker installation](#1-docker).
     * **$PASSWORD** is the password set in step 4 of [Docker installation](#1-docker).
 2) Run the following command to make the specified directories world readable, writable and executable.
 ```
-chmod -R a=rwx $DOCKER_PATH/drupal/files \
-&& chmod a=rwx $DOCKER_PATH/drupal/tmp \
-&& chmod a=rwx $DOCKER_PATH/drupal/sites/default/files
+chmod -R a=rwx $DOCKER_PATH/wamp/drupal/files \
+&& chmod a=rwx $DOCKER_PATH/wamp/drupal/tmp \
+&& chmod a=rwx $DOCKER_PATH/wamp/drupal/sites/default/files
 ```
 3) Using a web browser of your choice, naviagate to the "install.php" path of your site URL to install Drupal (e.g. `http://localhost:8088/wamp/install.php`).
 4) Enable Clean URLs
@@ -112,7 +112,7 @@ In order to upload essays into the system, essays need to be in XML format (e.g.
 
 ### Creating an annotator account
 1) Login as an administrator, navigate to Administer > User management > Users, go to "Add user" tab.
-2) Enter the details and click "Create new account"
+2) Enter the details, assign "annotator" role, and click "Create new account"
 3) Go to Administer > User management > Users, click "edit" on the newly created annotator account.
 4) Go to "Personal Information" tab, and enter the annotator's name.
 
